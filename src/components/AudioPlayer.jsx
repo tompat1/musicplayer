@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const SNAP_PX = 80;
+
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const minutes = Math.floor(seconds / 60);
@@ -13,6 +15,28 @@ const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
   return liveDuration ? formatTime(liveDuration) : '--:--';
 };
+
+const getPlaylistDuration = (track, index, durations, currentIndex, liveDuration) => {
+  if (track?.duration) return track.duration;
+  if (durations[track?.filename]) return durations[track.filename];
+  if (index === currentIndex && liveDuration) return formatTime(liveDuration);
+  return '--:--';
+};
+
+function DurationProbe({ track, onDuration }) {
+  if (!track?.src || track.duration) return null;
+
+  return (
+    <audio
+      preload="metadata"
+      src={track.src}
+      onLoadedMetadata={(event) => {
+        onDuration(track.filename, event.currentTarget.duration);
+      }}
+      onError={() => onDuration(track.filename, 0)}
+    />
+  );
+}
 
 function Slider({ label, value, onChange }) {
   const sliderRef = useRef(null);
@@ -88,6 +112,109 @@ function CoverArt({ track, playing }) {
   );
 }
 
+function VisualMode({ track, playing }) {
+  return (
+    <section className="visual-mode" data-playing={playing} aria-label="Minimized music visualizer">
+      <div className="visual-field" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, index) => (
+          <span className="visual-wave" key={index} style={{ '--wave': index }} />
+        ))}
+        <div className="visual-prism" />
+        <div className="visual-grid" />
+      </div>
+
+      <div className="visual-title">
+        <p className="eyebrow">Miniplayer visual mode</p>
+        <h1>{track?.title || 'Musicplayer'}</h1>
+        <p>{playing ? 'Color field locked to playback' : 'Ready for signal'}</p>
+      </div>
+    </section>
+  );
+}
+
+function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext }) {
+  const isVertical = side === 'left' || side === 'right';
+
+  return (
+    <aside className={`dock-handle dock-${side}`} data-playing={playing} aria-label="Docked miniplayer">
+      <button type="button" onClick={onPrevious} title="Previous track">
+        {isVertical ? 'UP' : 'PREV'}
+      </button>
+      <button className="dock-pulse" type="button" onClick={onRestore} title="Restore floating miniplayer">
+        {Array.from({ length: 5 }, (_, index) => <span key={index} style={{ '--bar': index }} />)}
+      </button>
+      <button type="button" onClick={onNext} title="Next track">
+        {isVertical ? 'DN' : 'NEXT'}
+      </button>
+    </aside>
+  );
+}
+
+function WinampMiniPlayer({
+  track,
+  playing,
+  currentTime,
+  durationLabel,
+  progress,
+  position,
+  dragging,
+  onSeek,
+  onToggle,
+  onStop,
+  onPrevious,
+  onNext,
+  onRestore,
+  onTitlePointerDown,
+  onTitlePointerMove,
+  onTitlePointerUp,
+  playerRef,
+}) {
+  const style = position ? { left: position.x, top: position.y } : undefined;
+
+  return (
+    <aside ref={playerRef} className="winamp-mini" style={style} aria-label="Floating Winamp miniplayer">
+      {dragging && <div className="dock-hint">Drag to edge to dock</div>}
+      <div
+        className="winamp-titlebar"
+        onPointerDown={onTitlePointerDown}
+        onPointerMove={onTitlePointerMove}
+        onPointerUp={onTitlePointerUp}
+      >
+        <span>MUSICPLAYER MINI</span>
+        <button type="button" onClick={onRestore} title="Restore full player">FULL</button>
+      </div>
+
+      <div className="winamp-lcd">
+        <div className="winamp-time-row">
+          <strong>{formatTime(currentTime)}</strong>
+          <span>{durationLabel}</span>
+        </div>
+        <div className="winamp-marquee">
+          <span data-playing={playing}>{(track?.title || 'No Tracks Loaded').toUpperCase()}</span>
+        </div>
+        <div className="winamp-meter" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, index) => (
+            <span key={index} data-playing={playing} style={{ '--bar': index }} />
+          ))}
+        </div>
+      </div>
+
+      <div className="winamp-seek">
+        <Slider label="Miniplayer progress" value={progress} onChange={onSeek} />
+      </div>
+
+      <div className="winamp-controls">
+        <button type="button" onClick={onPrevious} title="Previous track">PREV</button>
+        <button className="winamp-play" type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+          {playing ? 'PAUS' : 'PLAY'}
+        </button>
+        <button type="button" onClick={onStop} title="Stop">STOP</button>
+        <button type="button" onClick={onNext} title="Next track">NEXT</button>
+      </div>
+    </aside>
+  );
+}
+
 function TrackMeta({ track, liveDuration }) {
   const meta = [
     ['Source', track?.source === 'google-flow' ? 'Google Flow' : 'Local'],
@@ -111,7 +238,7 @@ function TrackMeta({ track, liveDuration }) {
   );
 }
 
-function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelect, liveDuration }) {
+function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelect, liveDuration, durations }) {
   const filteredTracks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return tracks.map((track, index) => ({ track, index }));
@@ -174,7 +301,7 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
                 <span className="track-tags">
                   {track.source === 'google-flow' && <span>FLOW</span>}
                   <span>{track.format || 'AUDIO'}</span>
-                  <span>{isActive ? getDurationLabel(track, liveDuration) : track.duration || '--:--'}</span>
+                  <span>{getPlaylistDuration(track, index, durations, currentIndex, liveDuration)}</span>
                 </span>
               </button>
             );
@@ -197,8 +324,16 @@ export default function AudioPlayer({ tracks = [] }) {
   const [repeat, setRepeat] = useState(false);
   const [query, setQuery] = useState('');
   const [audioError, setAudioError] = useState('');
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [durations, setDurations] = useState({});
+  const [miniPosition, setMiniPosition] = useState(null);
+  const [docked, setDocked] = useState(null);
+  const [isDraggingMini, setIsDraggingMini] = useState(false);
 
   const audioRef = useRef(null);
+  const miniRef = useRef(null);
+  const miniDragging = useRef(false);
+  const miniDragOffset = useRef({ x: 0, y: 0 });
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
 
@@ -263,6 +398,16 @@ export default function AudioPlayer({ tracks = [] }) {
     if (audioRef.current) audioRef.current.muted = isMuted;
   }, [isMuted]);
 
+  const setTrackDuration = useCallback((filename, seconds) => {
+    setDurations((currentDurations) => {
+      if (!filename || currentDurations[filename]) return currentDurations;
+      return {
+        ...currentDurations,
+        [filename]: seconds ? formatTime(seconds) : '--:--',
+      };
+    });
+  }, []);
+
   const play = async () => {
     if (!audioRef.current || !currentTrack) return;
     try {
@@ -321,8 +466,69 @@ export default function AudioPlayer({ tracks = [] }) {
     setIsPlaying(true);
   };
 
+  const minimize = () => {
+    setIsMinimized(true);
+    setDocked(null);
+  };
+
+  const restoreFullPlayer = () => {
+    setIsMinimized(false);
+    setDocked(null);
+  };
+
+  const onMiniTitlePointerDown = useCallback((event) => {
+    if (event.target.tagName === 'BUTTON') return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = miniRef.current.getBoundingClientRect();
+    miniDragOffset.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+    miniDragging.current = true;
+    setIsDraggingMini(true);
+    setDocked(null);
+  }, []);
+
+  const onMiniTitlePointerMove = useCallback((event) => {
+    if (!miniDragging.current) return;
+    const width = miniRef.current?.offsetWidth || 320;
+    const height = miniRef.current?.offsetHeight || 190;
+    const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
+    const y = clamp(event.clientY - miniDragOffset.current.y, 0, window.innerHeight - height);
+    setMiniPosition({ x, y });
+  }, []);
+
+  const onMiniTitlePointerUp = useCallback((event) => {
+    if (!miniDragging.current) return;
+    miniDragging.current = false;
+    setIsDraggingMini(false);
+
+    const width = miniRef.current?.offsetWidth || 320;
+    const height = miniRef.current?.offsetHeight || 190;
+    const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
+    const y = clamp(event.clientY - miniDragOffset.current.y, 0, window.innerHeight - height);
+    const edgeDistances = {
+      left: x,
+      right: window.innerWidth - (x + width),
+      top: y,
+      bottom: window.innerHeight - (y + height),
+    };
+    const closestSide = Object.entries(edgeDistances).sort((a, b) => a[1] - b[1])[0];
+
+    if (closestSide[1] <= SNAP_PX) {
+      setDocked(closestSide[0]);
+      return;
+    }
+
+    setMiniPosition({ x, y });
+  }, []);
+
+  const durationProbes = tracks.map((track) => (
+    <DurationProbe key={track.filename} track={track} onDuration={setTrackDuration} />
+  ));
+
   return (
-    <main className="player-shell">
+    <main className={`player-shell${isMinimized ? ' is-minimized' : ''}`}>
       {currentTrack && (
         <audio
           ref={audioRef}
@@ -333,6 +539,43 @@ export default function AudioPlayer({ tracks = [] }) {
           }}
         />
       )}
+      <div className="duration-probes" aria-hidden="true">{durationProbes}</div>
+
+      {isMinimized ? (
+        <>
+          <VisualMode track={currentTrack} playing={isPlaying} />
+          {docked ? (
+            <DockedMiniHandle
+              side={docked}
+              playing={isPlaying}
+              onRestore={() => setDocked(null)}
+              onPrevious={previous}
+              onNext={next}
+            />
+          ) : (
+            <WinampMiniPlayer
+              track={currentTrack}
+              playing={isPlaying}
+              currentTime={currentTime}
+              durationLabel={getDurationLabel(currentTrack, duration)}
+              progress={progress}
+              position={miniPosition}
+              dragging={isDraggingMini}
+              onSeek={seek}
+              onToggle={togglePlay}
+              onStop={stop}
+              onPrevious={previous}
+              onNext={next}
+              onRestore={restoreFullPlayer}
+              onTitlePointerDown={onMiniTitlePointerDown}
+              onTitlePointerMove={onMiniTitlePointerMove}
+              onTitlePointerUp={onMiniTitlePointerUp}
+              playerRef={miniRef}
+            />
+          )}
+        </>
+      ) : (
+        <>
 
       <section className="production-deck" aria-labelledby="page-title">
         <div className="deck-hero">
@@ -343,6 +586,7 @@ export default function AudioPlayer({ tracks = [] }) {
           <div className="deck-stats" aria-label="Catalog summary">
             <span>{tracks.length} tracks</span>
             <span>{new Set(tracks.map((track) => track.format).filter(Boolean)).size || 0} formats</span>
+            <button type="button" onClick={minimize}>Minimize</button>
           </div>
         </div>
 
@@ -417,7 +661,10 @@ export default function AudioPlayer({ tracks = [] }) {
         onQueryChange={setQuery}
         onSelect={selectTrack}
         liveDuration={duration}
+        durations={durations}
       />
+        </>
+      )}
     </main>
   );
 }
