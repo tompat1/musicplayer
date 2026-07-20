@@ -2,6 +2,8 @@
   {
     "filename": "Ambient House with Ethereal Vocals.mp3",
     "src": "/assets/audio/Ambient House with Ethereal Vocals.mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Ambient House With Ethereal Vocals",
     "artist": "",
     "mix": "",
@@ -16,6 +18,8 @@
   {
     "filename": "Deep Pulse (Acid Edit).mp3",
     "src": "/assets/audio/Deep Pulse (Acid Edit).mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Deep Pulse",
     "artist": "",
     "mix": "Acid Edit",
@@ -30,6 +34,8 @@
   {
     "filename": "Deep Pulse (Vocal Edit).mp3",
     "src": "/assets/audio/Deep Pulse (Vocal Edit).mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Deep Pulse",
     "artist": "",
     "mix": "Vocal Edit",
@@ -44,6 +50,8 @@
   {
     "filename": "Midnight Echoes.mp3",
     "src": "/assets/audio/Midnight Echoes.mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Midnight Echoes",
     "artist": "",
     "mix": "",
@@ -58,6 +66,8 @@
   {
     "filename": "Steel Rhythm (Even more Extended) (Extended) by DonTomato.m4a",
     "src": "/assets/audio/Steel Rhythm (Even more Extended) (Extended) by DonTomato.m4a",
+    "source": "local",
+    "flowUrl": "",
     "title": "Steel Rhythm",
     "artist": "DonTomato",
     "mix": "Even more Extended",
@@ -72,6 +82,8 @@
   {
     "filename": "Steel Rhythm (Extended).mp3",
     "src": "/assets/audio/Steel Rhythm (Extended).mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Steel Rhythm",
     "artist": "",
     "mix": "Extended",
@@ -86,6 +98,8 @@
   {
     "filename": "Stellar Pulse (Vocal Version) - Seamless Flow.mp3",
     "src": "/assets/audio/Stellar Pulse (Vocal Version) - Seamless Flow.mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Stellar Pulse Seamless Flow",
     "artist": "",
     "mix": "Vocal Version",
@@ -100,6 +114,8 @@
   {
     "filename": "Stellar Pulse.mp3",
     "src": "/assets/audio/Stellar Pulse.mp3",
+    "source": "local",
+    "flowUrl": "",
     "title": "Stellar Pulse",
     "artist": "",
     "mix": "",
@@ -114,6 +130,8 @@
   {
     "filename": "The Blue Edge (Bass Boosted Mix) by DonTomato.m4a",
     "src": "/assets/audio/The Blue Edge (Bass Boosted Mix) by DonTomato.m4a",
+    "source": "local",
+    "flowUrl": "",
     "title": "The Blue Edge",
     "artist": "DonTomato",
     "mix": "Bass Boosted Mix",
@@ -128,6 +146,8 @@
   {
     "filename": "The Blue Edge (Edited Journey Mix) by DonTomato.m4a",
     "src": "/assets/audio/The Blue Edge (Edited Journey Mix) by DonTomato.m4a",
+    "source": "local",
+    "flowUrl": "",
     "title": "The Blue Edge",
     "artist": "DonTomato",
     "mix": "Edited Journey Mix",

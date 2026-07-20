@@ -5,6 +5,7 @@ const audioDir = path.join(__dirname, '../public/assets/audio');
 const coverDir = path.join(__dirname, '../public/assets/covers');
 const outputJson = path.join(__dirname, '../src/audioData.json');
 const overridesJson = path.join(__dirname, '../src/catalogOverrides.json');
+const flowCatalogJson = path.join(__dirname, '../src/flowCatalog.json');
 
 const audioPattern = /\.(mp3|ogg|wav|flac|aac|m4a)$/i;
 const coverPattern = /\.(jpg|jpeg|png|webp|avif)$/i;
@@ -63,6 +64,16 @@ function extractMetadata(fileName) {
   };
 }
 
+function getUrlFormat(url) {
+  try {
+    const parsedUrl = new URL(url);
+    const extension = path.extname(parsedUrl.pathname).slice(1);
+    return extension ? extension.toUpperCase() : 'STREAM';
+  } catch {
+    return 'STREAM';
+  }
+}
+
 function createCoverIndex() {
   if (!fs.existsSync(coverDir)) return new Map();
 
@@ -86,7 +97,9 @@ function findCover(fileName, title, coverIndex) {
 }
 
 const overrides = readJson(overridesJson, {});
+const flowCatalog = readJson(flowCatalogJson, []);
 const coverIndex = createCoverIndex();
+const localTracks = [];
 
 if (fs.existsSync(audioDir)) {
   const audioFiles = fs
@@ -94,12 +107,14 @@ if (fs.existsSync(audioDir)) {
     .filter((file) => audioPattern.test(file))
     .sort((a, b) => a.localeCompare(b));
 
-  const tracks = audioFiles.map((file) => {
+  localTracks.push(...audioFiles.map((file) => {
     const inferred = extractMetadata(file);
     const override = overrides[file] || overrides[normalizeName(file)] || {};
     const merged = {
       filename: file,
       src: `/assets/audio/${file}`,
+      source: 'local',
+      flowUrl: '',
       ...inferred,
       ...override,
     };
@@ -108,11 +123,36 @@ if (fs.existsSync(audioDir)) {
       ...merged,
       cover: merged.cover || findCover(file, merged.title, coverIndex),
     };
-  });
-
-  fs.writeFileSync(outputJson, JSON.stringify(tracks, null, 2));
-  console.log(`src/audioData.json generated with ${tracks.length} track(s).`);
-} else {
-  fs.writeFileSync(outputJson, JSON.stringify([], null, 2));
-  console.log('src/audioData.json generated with no tracks.');
+  }));
 }
+
+const flowTracks = Array.isArray(flowCatalog)
+  ? flowCatalog
+      .filter((track) => track && track.src)
+      .map((track, index) => {
+        const title = track.title || `Google Flow Track ${index + 1}`;
+        const id = track.id || normalizeName(title);
+
+        return {
+          filename: track.filename || `${id}.flow`,
+          src: track.src,
+          title,
+          artist: track.artist || '',
+          mix: track.mix || '',
+          version: track.version || '',
+          format: track.format || getUrlFormat(track.src),
+          duration: track.duration || '',
+          bpm: track.bpm || '',
+          key: track.key || '',
+          notes: track.notes || '',
+          cover: track.cover || '',
+          source: 'google-flow',
+          flowUrl: track.flowUrl || track.shareUrl || '',
+        };
+      })
+  : [];
+
+const tracks = [...localTracks, ...flowTracks];
+
+fs.writeFileSync(outputJson, JSON.stringify(tracks, null, 2));
+console.log(`src/audioData.json generated with ${tracks.length} track(s).`);

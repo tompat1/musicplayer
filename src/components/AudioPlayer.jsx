@@ -90,6 +90,7 @@ function CoverArt({ track, playing }) {
 
 function TrackMeta({ track, liveDuration }) {
   const meta = [
+    ['Source', track?.source === 'google-flow' ? 'Google Flow' : 'Local'],
     ['Mix', track?.mix],
     ['Version', track?.version && track.version !== track.mix ? track.version : ''],
     ['Format', track?.format],
@@ -119,6 +120,7 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
       .map((track, index) => ({ track, index }))
       .filter(({ track }) => {
         const haystack = [track.title, track.mix, track.version, track.format, track.bpm, track.key, track.filename]
+          .concat(track.source, track.flowUrl)
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -167,9 +169,10 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
                 </span>
                 <span className="track-main">
                   <strong>{track.title}</strong>
-                  <small>{[track.mix || track.version, track.filename].filter(Boolean).join(' / ')}</small>
+                  <small>{[track.mix || track.version, track.source === 'google-flow' ? 'Google Flow' : track.filename].filter(Boolean).join(' / ')}</small>
                 </span>
                 <span className="track-tags">
+                  {track.source === 'google-flow' && <span>FLOW</span>}
                   <span>{track.format || 'AUDIO'}</span>
                   <span>{isActive ? getDurationLabel(track, liveDuration) : track.duration || '--:--'}</span>
                 </span>
@@ -193,6 +196,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
   const [query, setQuery] = useState('');
+  const [audioError, setAudioError] = useState('');
 
   const audioRef = useRef(null);
   const hasTracks = tracks.length > 0;
@@ -246,6 +250,7 @@ export default function AudioPlayer({ tracks = [] }) {
     setProgress(0);
     setCurrentTime(0);
     setDuration(0);
+    setAudioError('');
 
     if (isPlaying) audio.play().catch(() => setIsPlaying(false));
   }, [currentTrack]);
@@ -263,8 +268,10 @@ export default function AudioPlayer({ tracks = [] }) {
     try {
       await audioRef.current.play();
       setIsPlaying(true);
+      setAudioError('');
     } catch {
       setIsPlaying(false);
+      setAudioError('This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
     }
   };
 
@@ -316,7 +323,16 @@ export default function AudioPlayer({ tracks = [] }) {
 
   return (
     <main className="player-shell">
-      {currentTrack && <audio ref={audioRef} preload="metadata" />}
+      {currentTrack && (
+        <audio
+          ref={audioRef}
+          preload="metadata"
+          onError={() => {
+            setIsPlaying(false);
+            setAudioError('The audio source failed to load. Google Flow share links usually open a page; the player needs a direct streamable audio URL.');
+          }}
+        />
+      )}
 
       <section className="production-deck" aria-labelledby="page-title">
         <div className="deck-hero">
@@ -345,6 +361,12 @@ export default function AudioPlayer({ tracks = [] }) {
             </div>
 
             <TrackMeta track={currentTrack} liveDuration={duration} />
+            {currentTrack?.flowUrl && (
+              <a className="flow-link" href={currentTrack.flowUrl} target="_blank" rel="noreferrer">
+                Open in Google Flow
+              </a>
+            )}
+            {audioError && <div className="stream-alert" role="status">{audioError}</div>}
             <Equalizer playing={isPlaying} />
 
             <div className="time-row">
