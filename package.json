@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "catalog": "node scripts/generateTracks.cjs",
     "predev": "node scripts/generateTracks.cjs",
     "dev": "vite",
     "prebuild": "node scripts/generateTracks.cjs",
