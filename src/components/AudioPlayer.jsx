@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Mixed3 } from 'waviz';
 
 const SNAP_PX = 80;
+
+const ReactAudioSpectrum = lazy(() =>
+  import('react-audio-visualizers').then((module) => ({
+    default: function ReactAudioSpectrumLayer(props) {
+      return <module.SpectrumVisualizer {...props} theme={module.SpectrumVisualizerTheme.radialSquaredBars} />;
+    },
+  })),
+);
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -112,7 +121,37 @@ function CoverArt({ track, playing }) {
   );
 }
 
-function VisualMode({ track, playing }) {
+function VisualizerStack({ track, audioRef }) {
+  const wavizCanvasRef = useRef(null);
+
+  return (
+    <div className="synced-visualizers" aria-hidden="true">
+      <canvas className="waviz-canvas" ref={wavizCanvasRef} width="1200" height="720" />
+      <Mixed3 srcAudio={audioRef} srcCanvas={wavizCanvasRef} />
+      {track?.src && (
+        <div className="rav-spectrum">
+          <Suspense fallback={null}>
+            <ReactAudioSpectrum
+              audio={track.src}
+              colors={['#00ff41', '#d6ff36', '#ff335c', '#58d7ff']}
+              backgroundColor="transparent"
+              iconsColor="#d6ff36"
+              showMainActionIcon={false}
+              showLoaderIcon={false}
+              highFrequency={9000}
+              numBars={80}
+              radius={96}
+              barWidth={3}
+              mirror
+            />
+          </Suspense>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VisualMode({ track, playing, audioRef }) {
   return (
     <section className="visual-mode" data-playing={playing} aria-label="Minimized music visualizer">
       <div className="visual-field" aria-hidden="true">
@@ -122,6 +161,7 @@ function VisualMode({ track, playing }) {
         <div className="visual-prism" />
         <div className="visual-grid" />
       </div>
+      <VisualizerStack track={track} audioRef={audioRef} />
 
       <div className="visual-title">
         <p className="eyebrow">Miniplayer visual mode</p>
@@ -582,7 +622,7 @@ export default function AudioPlayer({ tracks = [] }) {
 
       {isMinimized ? (
         <>
-          <VisualMode track={currentTrack} playing={isPlaying} />
+          <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} />
           {docked ? (
             <DockedMiniHandle
               side={docked}
