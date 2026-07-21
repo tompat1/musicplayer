@@ -1731,6 +1731,20 @@ h1 {
 }
 
 .winamp-mini {
+  --skin-panel-top: #31364f;
+  --skin-panel-mid: #161927;
+  --skin-panel-bottom: #0c0e18;
+  --skin-title-top: #343a58;
+  --skin-title-bottom: #171a2a;
+  --skin-lcd: #020403;
+  --skin-lcd-text: #00ff36;
+  --skin-led-off: #18321c;
+  --skin-led-on: #00ff36;
+  --skin-button-top: #f7fbff;
+  --skin-button-mid: #cfd7e0;
+  --skin-button-bottom: #8c98a7;
+  --skin-button-ink: #05070c;
+  --skin-accent: #d8c77a;
   width: min(318px, calc(100vw - 24px));
   border: 1px solid #08090f;
   border-radius: 2px;
@@ -1751,7 +1765,7 @@ h1 {
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 4px),
     linear-gradient(135deg, rgba(103, 113, 153, 0.28), transparent 36%),
-    linear-gradient(#31364f, #161927 28%, #0c0e18);
+    linear-gradient(var(--skin-panel-top), var(--skin-panel-mid) 28%, var(--skin-panel-bottom));
   box-shadow:
     inset 1px 1px 0 #8c94b4,
     inset -1px -1px 0 #05060b,
@@ -1775,7 +1789,7 @@ h1 {
   color: #f7f7d0;
   background:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 4px),
-    linear-gradient(#343a58, #171a2a),
+    linear-gradient(var(--skin-title-top), var(--skin-title-bottom)),
     #20243a;
   font: 900 0.58rem/1 var(--mono);
   letter-spacing: 0.03em;
@@ -1790,7 +1804,7 @@ h1 {
 .winamp-title-lines {
   height: 9px;
   background:
-    repeating-linear-gradient(0deg, #d8c77a 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, var(--skin-accent) 0 1px, transparent 1px 3px),
     linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
 }
 
@@ -1828,12 +1842,12 @@ h1 {
   height: 5px;
   border: 1px solid #020403;
   border-radius: 1px;
-  background: #18321c;
+  background: var(--skin-led-off);
   box-shadow: inset 0 0 2px #000;
 }
 
 .winamp-led-button[data-active="true"] > span {
-  background: #00ff36;
+  background: var(--skin-led-on);
   box-shadow: 0 0 5px rgba(0, 255, 65, 0.92), inset 0 0 1px #eaffc7;
 }
 
@@ -1858,10 +1872,10 @@ h1 {
   gap: 4px;
   min-width: 0;
   padding: 3px 4px;
-  color: #00ff36;
+  color: var(--skin-lcd-text);
   background:
     repeating-linear-gradient(90deg, rgba(0, 255, 54, 0.08) 0 1px, transparent 1px 6px),
-    #020403;
+    var(--skin-lcd);
   text-shadow: 0 0 7px rgba(0, 255, 65, 0.88);
 }
 
@@ -2013,10 +2027,10 @@ h1 {
   border-radius: 1px;
   display: inline-grid;
   place-items: center;
-  color: #05070c;
+  color: var(--skin-button-ink);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0 16%, transparent 16% 44%, rgba(0, 0, 0, 0.2) 44% 100%),
-    linear-gradient(#f7fbff, #cfd7e0 44%, #8c98a7 45% 100%);
+    linear-gradient(var(--skin-button-top), var(--skin-button-mid) 44%, var(--skin-button-bottom) 45% 100%);
   box-shadow:
     inset 2px 2px 0 rgba(255, 255, 255, 0.95),
     inset -2px -2px 0 #56606e,
@@ -2028,8 +2042,20 @@ h1 {
 
 .winamp-controls button:hover,
 .winamp-mode-buttons button:hover {
-  color: #05070c;
+  color: var(--skin-button-ink);
   filter: brightness(1.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .winamp-controls button:hover .winamp-transport-icon {
+    color: var(--skin-led-on);
+    filter: drop-shadow(0 0 4px rgba(0, 255, 54, 0.82));
+  }
+}
+
+.winamp-controls button[data-active="true"] .winamp-transport-icon {
+  color: var(--skin-led-on);
+  filter: drop-shadow(0 0 4px rgba(0, 255, 54, 0.82));
 }
 
 .winamp-controls button:active,
@@ -2155,10 +2181,10 @@ h1 {
 
 .winamp-mode-buttons button {
   min-height: 17px;
-  color: #05070c;
+  color: var(--skin-button-ink);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0 16%, transparent 16% 44%, rgba(0, 0, 0, 0.18) 44% 100%),
-    linear-gradient(#f7fbff, #cfd7e0 44%, #8c98a7 45% 100%);
+    linear-gradient(var(--skin-button-top), var(--skin-button-mid) 44%, var(--skin-button-bottom) 45% 100%);
 }
 
 .winamp-mode-buttons button[data-active="true"] {
@@ -2177,6 +2203,14 @@ h1 {
   align-items: end;
   padding: 8px 8px 6px;
   color: #d9dfef;
+}
+
+.winamp-eq-body[data-open="false"] {
+  display: none;
+}
+
+.winamp-eq-panel:has(.winamp-eq-body[data-open="false"]) {
+  min-height: 0;
 }
 
 .winamp-preamp,
@@ -2347,6 +2381,28 @@ h1 {
   justify-self: end;
   color: #00ff36;
   font: 900 0.52rem/1 var(--mono);
+}
+
+.winamp-mini[data-skin="neon-candy"] {
+  --skin-panel-top: #3d214e;
+  --skin-panel-mid: #16102c;
+  --skin-panel-bottom: #080713;
+  --skin-title-top: #5a2566;
+  --skin-title-bottom: #1a102e;
+  --skin-lcd-text: #ff4fd8;
+  --skin-led-on: #ff4fd8;
+  --skin-accent: #58d7ff;
+}
+
+.winamp-mini[data-skin="flow-green"] {
+  --skin-panel-top: #163927;
+  --skin-panel-mid: #071b11;
+  --skin-panel-bottom: #020905;
+  --skin-title-top: #1d5a36;
+  --skin-title-bottom: #06170d;
+  --skin-lcd-text: #00ff6a;
+  --skin-led-on: #00ff6a;
+  --skin-accent: #d6ff36;
 }
 
 @media (max-width: 760px) {

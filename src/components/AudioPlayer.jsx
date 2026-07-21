@@ -411,6 +411,59 @@ function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
 
+function WinampLcdSpectrum({ audioRef, playing, eqGains, eqEnabled }) {
+  const [levels, setLevels] = useState(() => Array.from({ length: 18 }, () => 14));
+
+  useEffect(() => {
+    let frameId = 0;
+    let cancelled = false;
+    const audio = audioRef.current;
+
+    const drawIdle = () => {
+      setLevels((currentLevels) => currentLevels.map((_, index) => 10 + ((index * 13) % 18)));
+    };
+
+    const start = async () => {
+      const graph = await ensureAudioGraph(audio, eqGains, eqEnabled);
+      if (!graph || cancelled) {
+        drawIdle();
+        return;
+      }
+
+      const frequencyData = new Uint8Array(graph.analyser.frequencyBinCount);
+      const draw = () => {
+        graph.analyser.getByteFrequencyData(frequencyData);
+        setLevels((currentLevels) => currentLevels.map((_, index) => {
+          const bucketStart = Math.floor((index / currentLevels.length) * frequencyData.length);
+          const bucketEnd = Math.max(bucketStart + 1, Math.floor(((index + 1) / currentLevels.length) * frequencyData.length));
+          let peak = 0;
+          for (let i = bucketStart; i < bucketEnd; i += 1) peak = Math.max(peak, frequencyData[i]);
+          return clamp(Math.round((peak / 255) * 92), 8, 94);
+        }));
+        frameId = requestAnimationFrame(draw);
+      };
+
+      draw();
+    };
+
+    if (playing) start();
+    else drawIdle();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [audioRef, playing, eqEnabled, eqGains]);
+
+  return (
+    <div className="winamp-lcd-bars" aria-hidden="true">
+      {levels.map((level, index) => (
+        <span key={index} data-playing={playing} style={{ '--bar': index, '--level': `${level}%` }} />
+      ))}
+    </div>
+  );
+}
+
 function WinampMiniPlayer({
   track,
   tracks,
@@ -429,6 +482,8 @@ function WinampMiniPlayer({
   repeat,
   eqEnabled,
   eqGains,
+  eqPanelOpen,
+  audioRef,
   onSeek,
   onVolumeChange,
   onToggle,
@@ -438,6 +493,7 @@ function WinampMiniPlayer({
   onToggleShuffle,
   onToggleRepeat,
   onToggleEq,
+  onToggleEqPanel,
   onEqGainChange,
   onEqReset,
   onRestore,
@@ -455,7 +511,7 @@ function WinampMiniPlayer({
   const format = track?.format || 'AUDIO';
 
   return (
-    <aside ref={playerRef} className="winamp-mini" style={style} aria-label="Floating Winamp miniplayer">
+    <aside ref={playerRef} className="winamp-mini" data-skin="classic" style={style} aria-label="Floating Winamp miniplayer">
       {dragging && <div className="dock-hint">Drag to edge to dock</div>}
       <section className="winamp-panel winamp-player-panel" aria-label="Rynell player">
         <WinampWindowBar
@@ -477,15 +533,7 @@ function WinampMiniPlayer({
           <div className="winamp-time-display">
             <span className="winamp-play-indicator">{playing ? '>' : '||'}</span>
             <strong>{formatTime(currentTime)}</strong>
-            <div className="winamp-lcd-bars" aria-hidden="true">
-              {Array.from({ length: 18 }, (_, index) => (
-                <span
-                  key={index}
-                  data-playing={playing}
-                  style={{ '--bar': index, '--level': `${20 + ((index * 19) % 70)}%` }}
-                />
-              ))}
-            </div>
+            <WinampLcdSpectrum audioRef={audioRef} playing={playing} eqGains={eqGains} eqEnabled={eqEnabled} />
           </div>
 
           <div className="winamp-track-display">
@@ -515,10 +563,10 @@ function WinampMiniPlayer({
             <button type="button" onClick={onPrevious} title="Previous track">
               <WinampTransportIcon type="previous" />
             </button>
-            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'} data-active={!playing}>
               <WinampTransportIcon type="play" />
             </button>
-            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'} data-active={playing}>
               <WinampTransportIcon type="pause" />
             </button>
             <button type="button" onClick={onStop} title="Stop">
@@ -545,9 +593,10 @@ function WinampMiniPlayer({
       <section className="winamp-panel winamp-eq-panel" aria-label="Winamp equalizer">
         <WinampWindowBar title="RYNELL EQUALIZER">
           <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
+          <WinampLedButton active={eqPanelOpen} onClick={onToggleEqPanel}>EQ</WinampLedButton>
           <button type="button" onClick={onEqReset}>AUTO</button>
         </WinampWindowBar>
-        <div className="winamp-eq-body">
+        <div className="winamp-eq-body" data-open={eqPanelOpen}>
           <div className="winamp-preamp">
             <span>PREAMP</span>
             <i aria-hidden="true" />
@@ -738,6 +787,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const [isMobile, setIsMobile] = useState(false);
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
+  const [eqPanelOpen, setEqPanelOpen] = useState(true);
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -1112,6 +1162,8 @@ export default function AudioPlayer({ tracks = [] }) {
               repeat={repeat}
               eqEnabled={eqEnabled}
               eqGains={eqGains}
+              eqPanelOpen={eqPanelOpen}
+              audioRef={audioRef}
               onSeek={seek}
               onVolumeChange={setVolume}
               onToggle={togglePlay}
@@ -1121,6 +1173,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onToggleShuffle={() => setShuffle((value) => !value)}
               onToggleRepeat={() => setRepeat((value) => !value)}
               onToggleEq={() => setEqEnabled((value) => !value)}
+              onToggleEqPanel={() => setEqPanelOpen((value) => !value)}
               onEqGainChange={setEqGain}
               onEqReset={resetEq}
               onRestore={restoreFullPlayer}
