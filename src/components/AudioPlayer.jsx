@@ -340,6 +340,22 @@ function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext, onTogg
   );
 }
 
+function WinampWindowBar({ title, children, onPointerDown, onPointerMove, onPointerUp }) {
+  return (
+    <div
+      className="winamp-window-bar"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+    >
+      <span className="winamp-title-lines" aria-hidden="true" />
+      <strong>{title}</strong>
+      <span className="winamp-title-lines" aria-hidden="true" />
+      <div className="winamp-window-tools">{children}</div>
+    </div>
+  );
+}
+
 function WinampMiniPlayer({
   track,
   tracks,
@@ -354,12 +370,16 @@ function WinampMiniPlayer({
   durations,
   volume,
   visualMode,
+  shuffle,
+  repeat,
   onSeek,
   onVolumeChange,
   onToggle,
   onStop,
   onPrevious,
   onNext,
+  onToggleShuffle,
+  onToggleRepeat,
   onRestore,
   onSelect,
   onTogglePlaylist,
@@ -371,59 +391,105 @@ function WinampMiniPlayer({
   canOpenFullPlayer,
 }) {
   const style = position ? { left: position.x, top: position.y } : undefined;
+  const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
+  const format = track?.format || 'AUDIO';
 
   return (
     <aside ref={playerRef} className="winamp-mini" style={style} aria-label="Floating Winamp miniplayer">
       {dragging && <div className="dock-hint">Drag to edge to dock</div>}
-      <div
-        className="winamp-titlebar"
-        onPointerDown={onTitlePointerDown}
-        onPointerMove={onTitlePointerMove}
-        onPointerUp={onTitlePointerUp}
-      >
-        <span>MUSICPLAYER MINI</span>
-        {canOpenFullPlayer && <button type="button" onClick={onRestore} title="Open full-page player">FULL PAGE</button>}
-      </div>
+      <section className="winamp-panel winamp-player-panel" aria-label="Winamp player">
+        <WinampWindowBar
+          title="WINAMP"
+          onPointerDown={onTitlePointerDown}
+          onPointerMove={onTitlePointerMove}
+          onPointerUp={onTitlePointerUp}
+        >
+          {canOpenFullPlayer && <button type="button" onClick={onRestore} title="Open full-page player">FULL</button>}
+          <button type="button" aria-label="Decorative minimize control">_</button>
+          <button type="button" aria-label="Decorative close control">x</button>
+        </WinampWindowBar>
 
-      <div className="winamp-lcd">
-        <div className="winamp-time-row">
-          <strong>{formatTime(currentTime)}</strong>
-          <span>{durationLabel}</span>
+        <div className="winamp-player-body">
+          <div className="winamp-led-stack" aria-hidden="true">
+            {['O', 'A', 'I', 'D', 'V'].map((letter) => <span key={letter}>{letter}</span>)}
+          </div>
+
+          <div className="winamp-time-display">
+            <span className="winamp-play-indicator">{playing ? '>' : '||'}</span>
+            <strong>{formatTime(currentTime)}</strong>
+          </div>
+
+          <div className="winamp-track-display">
+            <div className="winamp-marquee">
+              <span data-playing={playing}>{(track?.title || 'No Tracks Loaded').toUpperCase()}</span>
+            </div>
+            <div className="winamp-meter" aria-hidden="true">
+              {Array.from({ length: 20 }, (_, index) => (
+                <span key={index} data-playing={playing} style={{ '--bar': index }} />
+              ))}
+            </div>
+            <div className="winamp-tech-row">
+              <span>{bitrate} kbps</span>
+              <span>{format}</span>
+              <span>{track?.key || 'mono'}</span>
+              <strong>{track?.bpm ? `${track.bpm} BPM` : durationLabel}</strong>
+            </div>
+          </div>
         </div>
-        <div className="winamp-marquee">
-          <span data-playing={playing}>{(track?.title || 'No Tracks Loaded').toUpperCase()}</span>
+
+        <div className="winamp-seek">
+          <Slider label="Miniplayer progress" value={progress} onChange={onSeek} />
         </div>
-        <div className="winamp-meter" aria-hidden="true">
-          {Array.from({ length: 16 }, (_, index) => (
-            <span key={index} data-playing={playing} style={{ '--bar': index }} />
+
+        <div className="winamp-bottom-row">
+          <div className="winamp-controls">
+            <button type="button" onClick={onPrevious} title="Previous track">|&lt;</button>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+              {playing ? '||' : '>'}
+            </button>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>{playing ? 'PAUS' : 'PLAY'}</button>
+            <button type="button" onClick={onStop} title="Stop">[]</button>
+            <button type="button" onClick={onNext} title="Next track">&gt;|</button>
+          </div>
+
+          <div className="winamp-volume">
+            <span>VOL</span>
+            <Slider label="Miniplayer volume" value={volume} onChange={onVolumeChange} />
+            <strong>{Math.round(volume * 100)}</strong>
+          </div>
+
+          <div className="winamp-mode-buttons">
+            <button type="button" onClick={onToggleShuffle} aria-pressed={shuffle} data-active={shuffle}>SHUFFLE</button>
+            <button type="button" onClick={onToggleRepeat} aria-pressed={repeat} data-active={repeat}>REPEAT</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="winamp-panel winamp-eq-panel" aria-label="Winamp equalizer">
+        <WinampWindowBar title="WINAMP EQUALIZER">
+          <button type="button" data-active="true">ON</button>
+          <button type="button">AUTO</button>
+        </WinampWindowBar>
+        <div className="winamp-eq-body">
+          <div className="winamp-preamp">
+            <span>PREAMP</span>
+            <i />
+          </div>
+          {['70', '180', '320', '600', '1K', '3K', '6K', '12K', '14K', '16K'].map((band, index) => (
+            <div className="winamp-eq-band" key={band} style={{ '--eq': index }}>
+              <i />
+              <span>{band}</span>
+            </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="winamp-seek">
-        <Slider label="Miniplayer progress" value={progress} onChange={onSeek} />
-      </div>
-
-      <div className="winamp-controls">
-        <button type="button" onClick={onPrevious} title="Previous track">PREV</button>
-        <button className="winamp-play" type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
-          {playing ? 'PAUS' : 'PLAY'}
-        </button>
-        <button type="button" onClick={onStop} title="Stop">STOP</button>
-        <button type="button" onClick={onNext} title="Next track">NEXT</button>
-      </div>
-
-      <div className="winamp-volume">
-        <span>VOL</span>
-        <Slider label="Miniplayer volume" value={volume} onChange={onVolumeChange} />
-        <strong>{Math.round(volume * 100)}</strong>
-      </div>
-
-      <div className="winamp-drawer">
-        <button className="winamp-drawer-toggle" type="button" onClick={onTogglePlaylist} aria-expanded={playlistOpen}>
-          <span>Playlist ({tracks.length})</span>
-          <span>{playlistOpen ? 'Hide' : 'Show'}</span>
-        </button>
+      <section className="winamp-panel winamp-playlist-panel" aria-label="Winamp playlist">
+        <WinampWindowBar title="WINAMP PLAYLIST">
+          <button type="button" onClick={onTogglePlaylist} aria-expanded={playlistOpen}>
+            {playlistOpen ? 'HIDE' : 'LIST'}
+          </button>
+        </WinampWindowBar>
 
         <div className="winamp-vis-row" aria-label="Visualizer mode">
           <span>VIS</span>
@@ -439,31 +505,37 @@ function WinampMiniPlayer({
           ))}
         </div>
 
-        {playlistOpen && (
-          <div className="winamp-songlist" role="list">
-            {tracks.length === 0 ? (
-              <div className="winamp-empty">Drop tracks into /public/assets/audio</div>
-            ) : (
-              tracks.map((playlistTrack, index) => {
-                const isActive = index === currentIndex;
-                return (
-                  <button
-                    type="button"
-                    key={playlistTrack.filename}
-                    className="winamp-song-row"
-                    data-active={isActive}
-                    onClick={() => onSelect(index)}
-                  >
-                    <span>{isActive && playing ? 'PLAY' : String(index + 1).padStart(2, '0')}</span>
-                    <strong>{playlistTrack.title}</strong>
-                    <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        )}
-      </div>
+        <div className="winamp-songlist" role="list" data-open={playlistOpen}>
+          {tracks.length === 0 ? (
+            <div className="winamp-empty">Drop tracks into /public/assets/audio</div>
+          ) : (
+            tracks.map((playlistTrack, index) => {
+              const isActive = index === currentIndex;
+              return (
+                <button
+                  type="button"
+                  key={playlistTrack.filename}
+                  className="winamp-song-row"
+                  data-active={isActive}
+                  onClick={() => onSelect(index)}
+                >
+                  <span>{`${index + 1}.`}</span>
+                  <strong>{playlistTrack.title}</strong>
+                  <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className="winamp-playlist-footer">
+          <button type="button">ADD</button>
+          <button type="button">REM</button>
+          <button type="button">SEL</button>
+          <button type="button">MISC</button>
+          <strong>{formatTime(currentTime)}/{durationLabel}</strong>
+        </div>
+      </section>
     </aside>
   );
 }
@@ -926,12 +998,16 @@ export default function AudioPlayer({ tracks = [] }) {
               durations={durations}
               volume={volume}
               visualMode={visualMode}
+              shuffle={shuffle}
+              repeat={repeat}
               onSeek={seek}
               onVolumeChange={setVolume}
               onToggle={togglePlay}
               onStop={stop}
               onPrevious={previous}
               onNext={next}
+              onToggleShuffle={() => setShuffle((value) => !value)}
+              onToggleRepeat={() => setRepeat((value) => !value)}
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}

@@ -1723,3 +1723,581 @@ h1 {
     gap: 8px;
   }
 }
+
+.winamp-mini {
+  width: min(318px, calc(100vw - 24px));
+  border: 1px solid #08090f;
+  border-radius: 2px;
+  color: #e8ecff;
+  background: #11131d;
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.72),
+    0 0 0 1px #4d5471,
+    inset 0 1px 0 #8d95b4;
+  font-family: var(--mono);
+}
+
+.winamp-panel {
+  overflow: hidden;
+  border: 1px solid #03040a;
+  border-radius: 2px;
+  background:
+    linear-gradient(135deg, rgba(103, 113, 153, 0.28), transparent 36%),
+    linear-gradient(#31364f, #161927 28%, #0c0e18);
+  box-shadow:
+    inset 1px 1px 0 #8c94b4,
+    inset -1px -1px 0 #05060b;
+}
+
+.winamp-panel + .winamp-panel {
+  margin-top: 5px;
+}
+
+.winamp-window-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 5px;
+  align-items: center;
+  min-height: 17px;
+  padding: 2px 4px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  color: #f7f7d0;
+  background:
+    linear-gradient(#343a58, #171a2a),
+    #20243a;
+  font: 900 0.58rem/1 var(--mono);
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.winamp-window-bar:active {
+  cursor: grabbing;
+}
+
+.winamp-title-lines {
+  height: 9px;
+  background:
+    repeating-linear-gradient(0deg, #d8c77a 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+}
+
+.winamp-window-tools {
+  display: flex;
+  gap: 2px;
+}
+
+.winamp-window-tools button {
+  min-width: 14px;
+  min-height: 13px;
+  padding: 0 3px;
+  border: 1px solid #06070d;
+  border-radius: 1px;
+  color: #080a10;
+  background:
+    linear-gradient(135deg, #d7d9e9, #7b829f 52%, #34394e);
+  box-shadow: inset 1px 1px 0 #fff;
+  font: 900 0.48rem/1 var(--mono);
+}
+
+.winamp-player-body {
+  display: grid;
+  grid-template-columns: 18px 72px minmax(0, 1fr);
+  gap: 7px;
+  padding: 8px 8px 3px;
+}
+
+.winamp-led-stack {
+  display: grid;
+  place-items: center;
+  color: #6a7188;
+  font: 900 0.46rem/1 var(--mono);
+}
+
+.winamp-time-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #00ff36;
+  background: #020403;
+  text-shadow: 0 0 7px rgba(0, 255, 65, 0.88);
+}
+
+.winamp-play-indicator {
+  color: #00cc2a;
+  font: 900 0.74rem/1 var(--mono);
+}
+
+.winamp-time-display strong {
+  font: 900 1.75rem/0.9 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.winamp-track-display {
+  min-width: 0;
+}
+
+.winamp-track-display .winamp-marquee {
+  height: 18px;
+  padding: 2px 4px;
+  border: 1px solid #030504;
+  color: #00ff36;
+  background: #020403;
+  font-size: 0.58rem;
+}
+
+.winamp-track-display .winamp-marquee span {
+  padding-left: 0;
+}
+
+.winamp-track-display .winamp-marquee span[data-playing="true"] {
+  animation: none;
+}
+
+.winamp-meter {
+  height: 18px;
+  margin-top: 3px;
+  padding: 2px;
+  border: 1px solid #020403;
+  background: #040805;
+}
+
+.winamp-meter span {
+  background: #103915;
+}
+
+.winamp-meter span[data-playing="true"] {
+  background: linear-gradient(to top, #00ff36 0 54%, #f3e85a 55% 78%, #ff4d36 79%);
+  box-shadow: none;
+}
+
+.winamp-tech-row {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+  color: #aeb9dd;
+  font: 900 0.48rem/1 var(--mono);
+  white-space: nowrap;
+}
+
+.winamp-tech-row span,
+.winamp-tech-row strong {
+  padding: 1px 3px;
+  color: #00ff36;
+  background: #051006;
+  box-shadow: inset 0 0 0 1px #112b15;
+}
+
+.winamp-seek {
+  padding: 2px 40px 3px 114px;
+}
+
+.winamp-seek .slider-track {
+  height: 8px;
+  border-color: #0b0d15;
+  border-radius: 1px;
+  background: #10131f;
+  box-shadow: inset 1px 1px 0 #05060b, inset -1px -1px 0 #6e7897;
+}
+
+.winamp-seek .slider-fill {
+  background: #d8c77a;
+  box-shadow: none;
+}
+
+.winamp-seek .slider-thumb,
+.winamp-volume .slider-thumb {
+  border: 1px solid #05060a;
+  border-radius: 1px;
+  background:
+    linear-gradient(#fbf5be, #c6ae55 52%, #5d4d24);
+  box-shadow:
+    inset 1px 1px 0 #fff8c8,
+    inset -1px -1px 0 #35290c,
+    0 1px 0 #000;
+}
+
+.winamp-bottom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 2px 8px 8px;
+}
+
+.winamp-controls {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  padding: 0;
+}
+
+.winamp-controls button,
+.winamp-mode-buttons button,
+.winamp-playlist-footer button {
+  min-height: 20px;
+  padding: 2px 4px;
+  cursor: pointer;
+  border: 1px solid #05060b;
+  border-radius: 1px;
+  color: #eef3ff;
+  background:
+    linear-gradient(135deg, #f0f2ff 0 12%, #8b94b2 45%, #353b52 46% 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.72),
+    inset -1px -1px 0 #000;
+  font: 900 0.52rem/1 var(--mono);
+  letter-spacing: 0;
+  text-shadow: 1px 1px 0 #05060b;
+}
+
+.winamp-controls button:hover,
+.winamp-mode-buttons button:hover,
+.winamp-playlist-footer button:hover {
+  color: #00ff36;
+}
+
+.winamp-controls button:active,
+.winamp-mode-buttons button:active,
+.winamp-playlist-footer button:active {
+  background:
+    linear-gradient(135deg, #2b3048 0 20%, #707995 48%, #d8ddea 100%);
+}
+
+.winamp-volume {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 0;
+  color: #aeb9dd;
+  font-size: 0.48rem;
+  letter-spacing: 0;
+}
+
+.winamp-volume > span,
+.winamp-volume strong {
+  display: none;
+}
+
+.winamp-volume .slider-track {
+  height: 8px;
+  border-color: #05060b;
+  border-radius: 1px;
+  background: #10131f;
+  box-shadow: inset 1px 1px 0 #05060b, inset -1px -1px 0 #6e7897;
+}
+
+.winamp-volume .slider-fill {
+  background: #00ff36;
+  box-shadow: none;
+}
+
+.winamp-mode-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.winamp-mode-buttons button {
+  min-height: 17px;
+  color: #b8c0dc;
+  background:
+    linear-gradient(#283048, #111625);
+}
+
+.winamp-mode-buttons button[data-active="true"] {
+  color: #00ff36;
+  text-shadow: 0 0 5px rgba(0, 255, 65, 0.8);
+}
+
+.winamp-eq-panel {
+  min-height: 94px;
+}
+
+.winamp-eq-body {
+  display: grid;
+  grid-template-columns: 34px repeat(10, 1fr);
+  gap: 5px;
+  align-items: end;
+  padding: 8px 8px 6px;
+  color: #d9dfef;
+}
+
+.winamp-preamp,
+.winamp-eq-band {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.winamp-preamp i,
+.winamp-eq-band i {
+  position: relative;
+  width: 5px;
+  height: 52px;
+  border: 1px solid #080a10;
+  background:
+    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px 25px, #e1c65b 25px 27px, transparent 27px),
+    #24283b;
+  box-shadow: inset 1px 0 0 #5e6682;
+}
+
+.winamp-preamp i::after,
+.winamp-eq-band i::after {
+  position: absolute;
+  left: 50%;
+  top: calc(8px + ((var(--eq, 4) * 7) % 30px));
+  width: 13px;
+  height: 8px;
+  content: "";
+  border: 1px solid #05060b;
+  background:
+    linear-gradient(#eef0ff, #8d96b4 55%, #34394e);
+  transform: translateX(-50%);
+}
+
+.winamp-preamp span,
+.winamp-eq-band span {
+  color: #d9dfef;
+  font: 900 0.43rem/1 var(--mono);
+}
+
+.winamp-playlist-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.winamp-playlist-panel .winamp-window-bar {
+  cursor: default;
+  touch-action: auto;
+}
+
+.winamp-playlist-panel .winamp-window-bar:active {
+  cursor: default;
+}
+
+.winamp-vis-row {
+  grid-template-columns: 24px repeat(4, 1fr);
+  gap: 3px;
+  padding: 4px 6px;
+  background: #11131d;
+}
+
+.winamp-vis-row button {
+  min-height: 17px;
+  color: #9fa8ca;
+  background: #070910;
+}
+
+.winamp-vis-row button[data-active="true"] {
+  color: #00ff36;
+  border-color: #46506d;
+  background: #121729;
+}
+
+.winamp-songlist {
+  max-height: 236px;
+  padding: 5px 0;
+  background: #020403;
+  scrollbar-color: #d8c77a #11131d;
+}
+
+.winamp-songlist[data-open="false"] {
+  display: none;
+}
+
+.winamp-song-row {
+  grid-template-columns: 45px minmax(0, 1fr) 38px;
+  min-height: 18px;
+  padding: 1px 8px;
+  border-left: 0;
+  color: #00ff36;
+  background: #020403;
+}
+
+.winamp-song-row span,
+.winamp-song-row small,
+.winamp-song-row strong {
+  font: 900 0.63rem/1.05 var(--mono);
+  letter-spacing: 0;
+}
+
+.winamp-song-row[data-active="true"] {
+  color: #020403;
+  background: #00d52d;
+  text-shadow: none;
+}
+
+.winamp-song-row:hover {
+  color: #f0ffd8;
+  background: #06220a;
+}
+
+.winamp-playlist-footer {
+  display: grid;
+  grid-template-columns: repeat(4, max-content) 1fr;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 6px 6px;
+  border-top: 1px solid #03040a;
+  background: #11131d;
+}
+
+.winamp-playlist-footer strong {
+  justify-self: end;
+  color: #00ff36;
+  font: 900 0.52rem/1 var(--mono);
+}
+
+@media (max-width: 760px) {
+  .winamp-mini {
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #0a0c14;
+  }
+
+  .winamp-panel {
+    border-radius: 0;
+  }
+
+  .winamp-player-panel,
+  .winamp-eq-panel {
+    flex: 0 0 auto;
+  }
+
+  .winamp-playlist-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .winamp-window-bar {
+    min-height: calc(22px + env(safe-area-inset-top) / 3);
+    padding-inline: 8px;
+    cursor: default;
+    touch-action: auto;
+  }
+
+  .winamp-window-bar:active {
+    cursor: default;
+  }
+
+  .winamp-player-body {
+    grid-template-columns: 22px 88px minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 10px 5px;
+  }
+
+  .winamp-time-display strong {
+    font-size: clamp(2rem, 9vw, 2.8rem);
+  }
+
+  .winamp-track-display .winamp-marquee {
+    height: 24px;
+    padding-top: 5px;
+    font-size: 0.66rem;
+  }
+
+  .winamp-meter {
+    height: 22px;
+  }
+
+  .winamp-tech-row {
+    grid-template-columns: repeat(2, max-content);
+    font-size: 0.54rem;
+  }
+
+  .winamp-seek {
+    padding: 8px 14px 6px;
+  }
+
+  .winamp-seek .slider-field,
+  .winamp-volume .slider-field {
+    min-height: 46px;
+  }
+
+  .winamp-seek .slider-track,
+  .winamp-volume .slider-track {
+    height: 16px;
+  }
+
+  .winamp-seek .slider-thumb,
+  .winamp-volume .slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .winamp-bottom-row {
+    grid-template-columns: 1fr;
+    padding: 4px 10px 10px;
+  }
+
+  .winamp-controls {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .winamp-controls button,
+  .winamp-mode-buttons button,
+  .winamp-playlist-footer button {
+    min-height: 38px;
+  }
+
+  .winamp-volume {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 36px;
+    align-items: center;
+  }
+
+  .winamp-volume > span,
+  .winamp-volume strong {
+    display: block;
+    color: #00ff36;
+    font: 900 0.58rem/1 var(--mono);
+  }
+
+  .winamp-eq-panel {
+    min-height: 104px;
+  }
+
+  .winamp-eq-body {
+    padding-inline: 10px;
+  }
+
+  .winamp-vis-row {
+    display: none;
+  }
+
+  .winamp-songlist {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .winamp-song-row {
+    grid-template-columns: 44px minmax(0, 1fr) 46px;
+    min-height: 36px;
+    padding: 5px 10px;
+  }
+
+  .winamp-song-row span,
+  .winamp-song-row small,
+  .winamp-song-row strong {
+    font-size: 0.67rem;
+  }
+
+  .winamp-playlist-footer {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
