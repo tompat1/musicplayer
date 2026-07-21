@@ -24,6 +24,15 @@ const getPlaylistDuration = (track, index, durations, currentIndex, liveDuration
   return '--:--';
 };
 
+const isKeyboardControlTarget = (target) => {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      'input, textarea, select, button, a, [contenteditable="true"], [role="slider"], [data-player-shortcuts="ignore"]',
+    ),
+  );
+};
+
 function DurationProbe({ track, onDuration }) {
   if (!track?.src || track.duration) return null;
 
@@ -674,7 +683,7 @@ export default function AudioPlayer({ tracks = [] }) {
     });
   }, []);
 
-  const play = async () => {
+  const play = useCallback(async () => {
     if (!audioRef.current || !currentTrack) return;
     try {
       await audioRef.current.play();
@@ -684,25 +693,25 @@ export default function AudioPlayer({ tracks = [] }) {
       setIsPlaying(false);
       setAudioError('This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
     }
-  };
+  }, [currentTrack]);
 
-  const pause = () => {
+  const pause = useCallback(() => {
     audioRef.current?.pause();
     setIsPlaying(false);
-  };
+  }, []);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (isPlaying) pause();
     else play();
-  };
+  }, [isPlaying, pause, play]);
 
-  const stop = () => {
+  const stop = useCallback(() => {
     audioRef.current?.pause();
     if (audioRef.current) audioRef.current.currentTime = 0;
     setIsPlaying(false);
     setProgress(0);
     setCurrentTime(0);
-  };
+  }, []);
 
   const seek = useCallback((percent) => {
     const audio = audioRef.current;
@@ -712,36 +721,96 @@ export default function AudioPlayer({ tracks = [] }) {
     setCurrentTime(percent * audio.duration);
   }, []);
 
-  const previous = () => {
+  const previous = useCallback(() => {
     if (!tracks.length) return;
     if (audioRef.current?.currentTime > 3) {
       audioRef.current.currentTime = 0;
       return;
     }
     setTrackIndex((index) => (index - 1 + tracks.length) % tracks.length);
-  };
+  }, [tracks.length]);
 
-  const next = () => {
+  const next = useCallback(() => {
     if (!tracks.length) return;
     if (shuffle) setTrackIndex(Math.floor(Math.random() * tracks.length));
     else setTrackIndex((index) => (index + 1) % tracks.length);
-  };
+  }, [shuffle, tracks.length]);
 
   const selectTrack = (index) => {
     setTrackIndex(index);
     setIsPlaying(true);
   };
 
-  const minimize = () => {
+  const minimize = useCallback(() => {
     setIsMinimized(true);
     setDocked(null);
-  };
+  }, []);
 
-  const restoreFullPlayer = () => {
+  const restoreFullPlayer = useCallback(() => {
     if (isMobile) return;
     setIsMinimized(false);
     setDocked(null);
-  };
+  }, [isMobile]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      if (isKeyboardControlTarget(event.target)) return;
+
+      const shortcut = event.code || event.key;
+
+      switch (shortcut) {
+        case 'Space':
+        case 'KeyK':
+          event.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          previous();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          next();
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setIsMuted(false);
+          setVolume((value) => clamp(value + 0.05, 0, 1));
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setVolume((value) => clamp(value - 0.05, 0, 1));
+          break;
+        case 'KeyM':
+          event.preventDefault();
+          setIsMuted((value) => !value);
+          break;
+        case 'KeyF':
+          event.preventDefault();
+          if (isMinimized) restoreFullPlayer();
+          else minimize();
+          break;
+        case 'MediaPlayPause':
+          event.preventDefault();
+          togglePlay();
+          break;
+        case 'MediaTrackPrevious':
+          event.preventDefault();
+          previous();
+          break;
+        case 'MediaTrackNext':
+          event.preventDefault();
+          next();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isMinimized, next, previous, restoreFullPlayer, togglePlay]);
 
   const onMiniTitlePointerDown = useCallback((event) => {
     if (event.target.tagName === 'BUTTON') return;
