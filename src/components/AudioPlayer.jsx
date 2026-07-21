@@ -540,25 +540,28 @@ function WinampMiniPlayer({
             <div className="winamp-marquee">
               <span data-playing={playing}>{(track?.title || 'No Tracks Loaded').toUpperCase()}</span>
             </div>
-            <div className="winamp-meter" aria-hidden="true">
-              {Array.from({ length: 20 }, (_, index) => (
-                <span key={index} data-playing={playing} style={{ '--bar': index }} />
-              ))}
-            </div>
             <div className="winamp-tech-row">
               <span>{bitrate} kbps</span>
               <span>{format}</span>
-              <span>{track?.key || 'mono'}</span>
+              <span>{track?.key || 'stereo'}</span>
               <strong>{track?.bpm ? `${track.bpm} BPM` : durationLabel}</strong>
             </div>
           </div>
         </div>
 
-        <div className="winamp-seek">
-          <Slider label="Miniplayer progress" value={progress} onChange={onSeek} />
-        </div>
-
         <div className="winamp-bottom-row">
+          <div className="winamp-slider-row">
+            <label className="winamp-slider-control">
+              <span>SONG</span>
+              <Slider label="Song position" value={progress} onChange={onSeek} />
+            </label>
+            <label className="winamp-slider-control">
+              <span>VOL</span>
+              <Slider label="Volume" value={volume} onChange={onVolumeChange} />
+              <strong>{Math.round(volume * 100)}</strong>
+            </label>
+          </div>
+
           <div className="winamp-controls">
             <button type="button" onClick={onPrevious} title="Previous track">
               <WinampTransportIcon type="previous" />
@@ -577,12 +580,6 @@ function WinampMiniPlayer({
             </button>
             <WinampLedButton active={shuffle} onClick={onToggleShuffle}>SHUFFLE</WinampLedButton>
             <WinampLedButton active={repeat} onClick={onToggleRepeat}>REPEAT</WinampLedButton>
-          </div>
-
-          <div className="winamp-volume">
-            <span>VOL</span>
-            <Slider label="Miniplayer volume" value={volume} onChange={onVolumeChange} />
-            <strong>{Math.round(volume * 100)}</strong>
           </div>
         </div>
       </section>

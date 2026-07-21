@@ -1951,23 +1951,6 @@ h1 {
   animation: none;
 }
 
-.winamp-meter {
-  height: 18px;
-  margin-top: 3px;
-  padding: 2px;
-  border: 1px solid #020403;
-  background: #040805;
-}
-
-.winamp-meter span {
-  background: #103915;
-}
-
-.winamp-meter span[data-playing="true"] {
-  background: linear-gradient(to top, #00ff36 0 54%, #f3e85a 55% 78%, #ff4d36 79%);
-  box-shadow: none;
-}
-
 .winamp-tech-row {
   display: grid;
   grid-template-columns: repeat(4, max-content);
@@ -1987,11 +1970,34 @@ h1 {
   box-shadow: inset 0 0 0 1px #112b15;
 }
 
-.winamp-seek {
-  padding: 2px 40px 3px 114px;
+.winamp-slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 7px;
+  align-items: center;
 }
 
-.winamp-seek .slider-track {
+.winamp-slider-control {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  color: #00ff36;
+  font: 900 0.54rem/1 var(--mono);
+}
+
+.winamp-slider-control strong {
+  justify-self: end;
+  color: #00ff36;
+  font: inherit;
+}
+
+.winamp-slider-control:last-child {
+  grid-template-columns: 24px minmax(0, 1fr) max-content;
+}
+
+.winamp-slider-control .slider-track {
   height: 8px;
   border-color: #0b0d15;
   border-radius: 1px;
@@ -1999,13 +2005,12 @@ h1 {
   box-shadow: inset 1px 1px 0 #05060b, inset -1px -1px 0 #6e7897;
 }
 
-.winamp-seek .slider-fill {
+.winamp-slider-control .slider-fill {
   background: #d8c77a;
   box-shadow: none;
 }
 
-.winamp-seek .slider-thumb,
-.winamp-volume .slider-thumb {
+.winamp-slider-control .slider-thumb {
   border: 1px solid #05060a;
   border-radius: 1px;
   background:
@@ -2154,38 +2159,10 @@ h1 {
   border-left: 11px solid currentColor;
 }
 
-.winamp-volume {
-  justify-self: end;
-  width: 76px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
-  padding: 0;
-  color: #aeb9dd;
-  font-size: 0.48rem;
-  letter-spacing: 0;
-}
-
-.winamp-volume > span,
-.winamp-volume strong {
-  display: none;
-}
-
-.winamp-volume .slider-track {
-  height: 8px;
-  border-color: #05060b;
-  border-radius: 1px;
-  background: #10131f;
-  box-shadow: inset 1px 1px 0 #05060b, inset -1px -1px 0 #6e7897;
-}
-
-.winamp-volume .slider-fill {
-  background: #00ff36;
-  box-shadow: none;
-}
-
 .winamp-controls .winamp-led-button {
   min-height: 17px;
+  display: flex;
+  align-items: center;
   justify-content: start;
   gap: 4px;
   padding-inline: 5px;
@@ -2466,31 +2443,33 @@ h1 {
     font-size: 0.66rem;
   }
 
-  .winamp-meter {
-    height: 22px;
-  }
-
   .winamp-tech-row {
     grid-template-columns: repeat(2, max-content);
     font-size: 0.54rem;
   }
 
-  .winamp-seek {
-    padding: 8px 14px 6px;
+  .winamp-slider-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
-  .winamp-seek .slider-field,
-  .winamp-volume .slider-field {
+  .winamp-slider-control {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .winamp-slider-control:last-child {
+    grid-template-columns: 34px minmax(0, 1fr) 36px;
+  }
+
+  .winamp-slider-control .slider-field {
     min-height: 46px;
   }
 
-  .winamp-seek .slider-track,
-  .winamp-volume .slider-track {
+  .winamp-slider-control .slider-track {
     height: 16px;
   }
 
-  .winamp-seek .slider-thumb,
-  .winamp-volume .slider-thumb {
+  .winamp-slider-control .slider-thumb {
     width: 28px;
     height: 28px;
   }
@@ -2511,19 +2490,6 @@ h1 {
 
   .winamp-controls button {
     min-height: 38px;
-  }
-
-  .winamp-volume {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 36px;
-    align-items: center;
-  }
-
-  .winamp-volume > span,
-  .winamp-volume strong {
-    display: block;
-    color: #00ff36;
-    font: 900 0.58rem/1 var(--mono);
   }
 
   .winamp-eq-panel {
