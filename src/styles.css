@@ -1442,6 +1442,15 @@ h1 {
     padding: 10px 0;
   }
 
+  .player-shell.is-minimized {
+    width: 100%;
+    padding: 0;
+  }
+
+  .winamp-titlebar button {
+    display: none;
+  }
+
   .deck-hero,
   .now-playing-grid {
     padding: 18px;
