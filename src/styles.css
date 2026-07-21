@@ -953,6 +953,12 @@ h1 {
   }
 }
 
+@keyframes winamp-lcd-bar {
+  to {
+    height: calc(12% + ((var(--bar) * 23) % 72) * 1%);
+  }
+}
+
 @keyframes dock-pulse {
   from {
     transform: scaleY(0.35);
@@ -1806,6 +1812,10 @@ h1 {
   font: 900 0.48rem/1 var(--mono);
 }
 
+.winamp-window-tools .winamp-led-button {
+  color: #05060b;
+}
+
 .winamp-led-button {
   display: inline-flex;
   align-items: center;
@@ -1842,9 +1852,12 @@ h1 {
 }
 
 .winamp-time-display {
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content 1fr;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  padding: 3px 4px;
   color: #00ff36;
   background:
     repeating-linear-gradient(90deg, rgba(0, 255, 54, 0.08) 0 1px, transparent 1px 6px),
@@ -1858,9 +1871,34 @@ h1 {
 }
 
 .winamp-time-display strong {
-  font: 900 1.75rem/0.9 var(--mono);
+  font: 900 1.28rem/0.9 var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+.winamp-lcd-bars {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  gap: 2px;
+  height: 28px;
+  margin-top: 2px;
+  padding: 2px 0 0;
+  border-top: 1px dotted rgba(0, 255, 54, 0.16);
+}
+
+.winamp-lcd-bars span {
+  flex: 1;
+  height: 16%;
+  min-width: 2px;
+  background: #153b17;
+}
+
+.winamp-lcd-bars span[data-playing="true"] {
+  height: var(--level);
+  background:
+    linear-gradient(to top, #00ff36 0 55%, #f4e45a 56% 78%, #ff7b24 79% 100%);
+  animation: winamp-lcd-bar 520ms ease-in-out calc(var(--bar) * 42ms) infinite alternate;
 }
 
 .winamp-track-display {
@@ -1967,36 +2005,117 @@ h1 {
 }
 
 .winamp-controls button,
-.winamp-mode-buttons button,
-.winamp-playlist-footer button {
+.winamp-mode-buttons button {
   min-height: 20px;
   padding: 2px 4px;
   cursor: pointer;
   border: 1px solid #05060b;
   border-radius: 1px;
-  color: #eef3ff;
+  display: inline-grid;
+  place-items: center;
+  color: #05070c;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.9) 0 10%, transparent 10% 46%, rgba(0, 0, 0, 0.32) 46% 100%),
-    linear-gradient(135deg, #f0f2ff 0 12%, #8b94b2 45%, #353b52 46% 100%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0 16%, transparent 16% 44%, rgba(0, 0, 0, 0.2) 44% 100%),
+    linear-gradient(#f7fbff, #cfd7e0 44%, #8c98a7 45% 100%);
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.72),
-    inset -1px -1px 0 #000;
+    inset 2px 2px 0 rgba(255, 255, 255, 0.95),
+    inset -2px -2px 0 #56606e,
+    0 1px 0 #000;
   font: 900 0.52rem/1 var(--mono);
   letter-spacing: 0;
-  text-shadow: 1px 1px 0 #05060b;
+  text-shadow: none;
 }
 
 .winamp-controls button:hover,
-.winamp-mode-buttons button:hover,
-.winamp-playlist-footer button:hover {
-  color: #00ff36;
+.winamp-mode-buttons button:hover {
+  color: #05070c;
+  filter: brightness(1.08);
 }
 
 .winamp-controls button:active,
-.winamp-mode-buttons button:active,
-.winamp-playlist-footer button:active {
+.winamp-mode-buttons button:active {
   background:
     linear-gradient(135deg, #2b3048 0 20%, #707995 48%, #d8ddea 100%);
+}
+
+.winamp-transport-icon {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 14px;
+  color: #52606a;
+}
+
+.winamp-transport-icon::before,
+.winamp-transport-icon::after {
+  position: absolute;
+  top: 50%;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.icon-play::before {
+  left: 6px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+}
+
+.icon-pause::before,
+.icon-pause::after {
+  width: 5px;
+  height: 13px;
+  background: currentColor;
+}
+
+.icon-pause::before {
+  left: 5px;
+}
+
+.icon-pause::after {
+  right: 5px;
+}
+
+.icon-stop::before {
+  left: 5px;
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+}
+
+.icon-previous::before,
+.icon-next::before {
+  width: 3px;
+  height: 14px;
+  background: currentColor;
+}
+
+.icon-previous::before {
+  left: 3px;
+}
+
+.icon-next::before {
+  right: 3px;
+}
+
+.icon-previous::after,
+.icon-next::after {
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+
+.icon-previous::after {
+  left: 7px;
+  border-right: 11px solid currentColor;
+}
+
+.icon-next::after {
+  right: 7px;
+  border-left: 11px solid currentColor;
 }
 
 .winamp-volume {
@@ -2036,15 +2155,15 @@ h1 {
 
 .winamp-mode-buttons button {
   min-height: 17px;
-  color: #b8c0dc;
+  color: #05070c;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.18) 0 42%, transparent 42%),
-    linear-gradient(#283048, #111625);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0 16%, transparent 16% 44%, rgba(0, 0, 0, 0.18) 44% 100%),
+    linear-gradient(#f7fbff, #cfd7e0 44%, #8c98a7 45% 100%);
 }
 
 .winamp-mode-buttons button[data-active="true"] {
-  color: #00ff36;
-  text-shadow: 0 0 5px rgba(0, 255, 65, 0.8);
+  color: #05070c;
+  text-shadow: none;
 }
 
 .winamp-eq-panel {
@@ -2216,10 +2335,9 @@ h1 {
 }
 
 .winamp-playlist-footer {
-  display: grid;
-  grid-template-columns: repeat(4, max-content) 1fr;
-  gap: 4px;
+  display: flex;
   align-items: center;
+  justify-content: flex-end;
   padding: 5px 6px 6px;
   border-top: 1px solid #03040a;
   background: #11131d;
@@ -2275,7 +2393,7 @@ h1 {
   }
 
   .winamp-time-display strong {
-    font-size: clamp(2rem, 9vw, 2.8rem);
+    font-size: clamp(1.45rem, 7vw, 2rem);
   }
 
   .winamp-track-display .winamp-marquee {
@@ -2323,8 +2441,7 @@ h1 {
   }
 
   .winamp-controls button,
-  .winamp-mode-buttons button,
-  .winamp-playlist-footer button {
+  .winamp-mode-buttons button {
     min-height: 38px;
   }
 

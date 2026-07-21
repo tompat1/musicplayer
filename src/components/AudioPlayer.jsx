@@ -4,6 +4,7 @@ const SNAP_PX = 80;
 const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const playerBrand = 'RYNELL PLAYER';
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -346,7 +347,7 @@ function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }
       />
 
       <div className="visual-title">
-        <p className="eyebrow">Miniplayer visual mode</p>
+        <p className="eyebrow">Rynell Player visual mode</p>
         <h1>{track?.title || 'Musicplayer'}</h1>
         <p>{playing ? `${visualMode} visual locked to playback` : 'Ready for signal'}</p>
       </div>
@@ -406,6 +407,10 @@ function WinampLedButton({ active, children, className = '', ...props }) {
   );
 }
 
+function WinampTransportIcon({ type }) {
+  return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
+}
+
 function WinampMiniPlayer({
   track,
   tracks,
@@ -452,9 +457,9 @@ function WinampMiniPlayer({
   return (
     <aside ref={playerRef} className="winamp-mini" style={style} aria-label="Floating Winamp miniplayer">
       {dragging && <div className="dock-hint">Drag to edge to dock</div>}
-      <section className="winamp-panel winamp-player-panel" aria-label="Winamp player">
+      <section className="winamp-panel winamp-player-panel" aria-label="Rynell player">
         <WinampWindowBar
-          title="WINAMP"
+          title={playerBrand}
           onPointerDown={onTitlePointerDown}
           onPointerMove={onTitlePointerMove}
           onPointerUp={onTitlePointerUp}
@@ -472,6 +477,15 @@ function WinampMiniPlayer({
           <div className="winamp-time-display">
             <span className="winamp-play-indicator">{playing ? '>' : '||'}</span>
             <strong>{formatTime(currentTime)}</strong>
+            <div className="winamp-lcd-bars" aria-hidden="true">
+              {Array.from({ length: 18 }, (_, index) => (
+                <span
+                  key={index}
+                  data-playing={playing}
+                  style={{ '--bar': index, '--level': `${20 + ((index * 19) % 70)}%` }}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="winamp-track-display">
@@ -498,13 +512,21 @@ function WinampMiniPlayer({
 
         <div className="winamp-bottom-row">
           <div className="winamp-controls">
-            <button type="button" onClick={onPrevious} title="Previous track">|&lt;</button>
-            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
-              {playing ? '||' : '>'}
+            <button type="button" onClick={onPrevious} title="Previous track">
+              <WinampTransportIcon type="previous" />
             </button>
-            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>{playing ? 'PAUS' : 'PLAY'}</button>
-            <button type="button" onClick={onStop} title="Stop">[]</button>
-            <button type="button" onClick={onNext} title="Next track">&gt;|</button>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+              <WinampTransportIcon type="play" />
+            </button>
+            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
+              <WinampTransportIcon type="pause" />
+            </button>
+            <button type="button" onClick={onStop} title="Stop">
+              <WinampTransportIcon type="stop" />
+            </button>
+            <button type="button" onClick={onNext} title="Next track">
+              <WinampTransportIcon type="next" />
+            </button>
           </div>
 
           <div className="winamp-volume">
@@ -521,7 +543,7 @@ function WinampMiniPlayer({
       </section>
 
       <section className="winamp-panel winamp-eq-panel" aria-label="Winamp equalizer">
-        <WinampWindowBar title="WINAMP EQUALIZER">
+        <WinampWindowBar title="RYNELL EQUALIZER">
           <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
           <button type="button" onClick={onEqReset}>AUTO</button>
         </WinampWindowBar>
@@ -548,7 +570,7 @@ function WinampMiniPlayer({
       </section>
 
       <section className="winamp-panel winamp-playlist-panel" aria-label="Winamp playlist">
-        <WinampWindowBar title="WINAMP PLAYLIST">
+        <WinampWindowBar title="RYNELL PLAYLIST">
           <WinampLedButton active={playlistOpen} onClick={onTogglePlaylist} aria-expanded={playlistOpen}>PL</WinampLedButton>
         </WinampWindowBar>
 
@@ -590,10 +612,6 @@ function WinampMiniPlayer({
         </div>
 
         <div className="winamp-playlist-footer">
-          <button type="button">ADD</button>
-          <button type="button">REM</button>
-          <button type="button">SEL</button>
-          <button type="button">MISC</button>
           <strong>{formatTime(currentTime)}/{durationLabel}</strong>
         </div>
       </section>
