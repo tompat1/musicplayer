@@ -51,10 +51,12 @@ function DurationProbe({ track, onDuration }) {
 function Slider({ label, value, onChange }) {
   const sliderRef = useRef(null);
   const activePointerId = useRef(null);
+  const thumbValue = clamp(value, 0.025, 0.975);
 
   const updateValue = useCallback(
     (event) => {
       const rect = sliderRef.current.getBoundingClientRect();
+      if (!rect.width) return;
       onChange(clamp((event.clientX - rect.left) / rect.width, 0, 1));
     },
     [onChange],
@@ -78,21 +80,38 @@ function Slider({ label, value, onChange }) {
           updateValue(event);
         }}
         onPointerMove={(event) => {
+          event.preventDefault();
           if (activePointerId.current === event.pointerId) updateValue(event);
         }}
         onPointerUp={(event) => {
-          if (activePointerId.current === event.pointerId) activePointerId.current = null;
+          if (activePointerId.current === event.pointerId) {
+            activePointerId.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+          }
         }}
         onPointerCancel={(event) => {
-          if (activePointerId.current === event.pointerId) activePointerId.current = null;
+          if (activePointerId.current === event.pointerId) {
+            activePointerId.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+          }
         }}
         onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft') onChange(clamp(value - 0.02, 0, 1));
-          if (event.key === 'ArrowRight') onChange(clamp(value + 0.02, 0, 1));
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            onChange(clamp(value - 0.02, 0, 1));
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            onChange(clamp(value + 0.02, 0, 1));
+          }
         }}
       >
         <span className="slider-fill" style={{ width: `${value * 100}%` }} />
-        <span className="slider-thumb" style={{ left: `${value * 100}%` }} />
+        <span className="slider-thumb" style={{ left: `${thumbValue * 100}%` }} />
       </div>
     </div>
   );
@@ -813,6 +832,7 @@ export default function AudioPlayer({ tracks = [] }) {
   }, [isMinimized, next, previous, restoreFullPlayer, togglePlay]);
 
   const onMiniTitlePointerDown = useCallback((event) => {
+    if (isMobile) return;
     if (event.target.tagName === 'BUTTON') return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -824,7 +844,7 @@ export default function AudioPlayer({ tracks = [] }) {
     miniDragging.current = true;
     setIsDraggingMini(true);
     setDocked(null);
-  }, []);
+  }, [isMobile]);
 
   const onMiniTitlePointerMove = useCallback((event) => {
     if (!miniDragging.current) return;
@@ -881,7 +901,7 @@ export default function AudioPlayer({ tracks = [] }) {
 
       {isMinimized ? (
         <>
-          <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} visualMode={visualMode} />
+          {!isMobile && <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} visualMode={visualMode} />}
           {docked ? (
             <DockedMiniHandle
               side={docked}

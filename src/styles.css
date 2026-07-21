@@ -1112,11 +1112,15 @@ h1 {
 .slider-field {
   display: flex;
   align-items: center;
+  width: 100%;
   min-height: 24px;
 }
 
 .slider-track {
   position: relative;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
   height: 14px;
   cursor: pointer;
   touch-action: none;
@@ -1467,6 +1471,10 @@ h1 {
 }
 
 @media (max-width: 760px) {
+  body {
+    overflow: hidden;
+  }
+
   .player-shell {
     width: min(100% - 20px, 680px);
     padding: 10px 0;
@@ -1474,6 +1482,7 @@ h1 {
 
   .player-shell.is-minimized {
     width: 100%;
+    height: 100dvh;
     padding: 0;
   }
 
@@ -1482,31 +1491,68 @@ h1 {
   }
 
   .visual-mode {
-    min-height: 100dvh;
-    padding: 6vh 14px calc(14px + env(safe-area-inset-bottom));
-  }
-
-  .visual-title {
-    width: min(100% - 24px, 560px);
-  }
-
-  .visual-title h1 {
-    font-size: clamp(2.8rem, 17vw, 5.6rem);
+    display: none;
   }
 
   .winamp-mini {
-    top: max(12px, env(safe-area-inset-top));
-    left: 12px;
-    width: calc(100vw - 24px);
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y: auto;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(135deg, rgba(255, 51, 92, 0.16), transparent 30%),
+      linear-gradient(225deg, rgba(88, 215, 255, 0.14), transparent 34%),
+      repeating-linear-gradient(0deg, rgba(0, 255, 65, 0.045) 0 1px, transparent 1px 16px),
+      rgba(6, 10, 7, 0.98);
   }
 
   .winamp-titlebar {
-    min-height: 44px;
-    padding: 9px 10px;
+    flex: 0 0 auto;
+    min-height: calc(48px + env(safe-area-inset-top));
+    padding: calc(9px + env(safe-area-inset-top)) 14px 9px;
+    cursor: default;
+    touch-action: auto;
+    border-radius: 0;
+  }
+
+  .winamp-titlebar:active {
+    cursor: default;
+  }
+
+  .winamp-lcd {
+    flex: 0 0 auto;
+    margin: 12px 12px 0;
+    padding: 12px;
+  }
+
+  .winamp-time-row strong {
+    font-size: clamp(1.7rem, 8vw, 2.35rem);
+  }
+
+  .winamp-marquee {
+    font-size: 0.76rem;
+  }
+
+  .winamp-marquee span {
+    overflow: hidden;
+    padding-left: 0;
+    text-overflow: ellipsis;
+  }
+
+  .winamp-marquee span[data-playing="true"] {
+    animation: none;
+  }
+
+  .winamp-seek {
+    flex: 0 0 auto;
+    padding: 12px 14px 6px;
   }
 
   .winamp-controls button,
@@ -1517,38 +1563,65 @@ h1 {
 
   .winamp-volume {
     grid-template-columns: 34px minmax(0, 1fr) 38px;
+    flex: 0 0 auto;
     min-height: 48px;
-    padding-bottom: 6px;
+    padding: 2px 14px 10px;
   }
 
   .winamp-volume .slider-field,
   .winamp-seek .slider-field {
-    min-height: 44px;
+    position: relative;
+    min-height: 52px;
+  }
+
+  .winamp-volume .slider-field::before,
+  .winamp-seek .slider-field::before {
+    position: absolute;
+    inset: 0;
+    content: "";
   }
 
   .winamp-volume .slider-track,
   .winamp-seek .slider-track {
-    height: 13px;
+    height: 16px;
   }
 
   .winamp-volume .slider-thumb,
   .winamp-seek .slider-thumb {
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
+  }
+
+  .winamp-drawer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .winamp-vis-row {
-    grid-template-columns: 34px repeat(4, minmax(0, 1fr));
-    padding: 8px;
+    display: none;
   }
 
-  .winamp-vis-row button {
-    min-height: 44px;
-    font-size: 0.5rem;
+  .winamp-drawer-toggle {
+    flex: 0 0 auto;
+    padding-inline: 14px;
   }
 
   .winamp-songlist {
-    max-height: clamp(96px, calc(100dvh - 360px), 220px);
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .winamp-song-row {
+    grid-template-columns: 40px minmax(0, 1fr) 52px;
+    padding: 8px 14px;
+  }
+
+  .winamp-song-row strong {
+    font-size: 0.7rem;
   }
 
   .deck-hero,
