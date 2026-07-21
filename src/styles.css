@@ -25,6 +25,7 @@
 html {
   min-height: 100%;
   background: var(--bg);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -60,6 +61,7 @@ input {
 
 button {
   min-height: 44px;
+  touch-action: manipulation;
 }
 
 button:focus-visible,
@@ -482,6 +484,8 @@ h1 {
   left: 28px;
   z-index: 30;
   width: min(292px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
   border: 1px solid rgba(0, 255, 65, 0.42);
   border-radius: 6px;
   background:
@@ -522,6 +526,7 @@ h1 {
   gap: 10px;
   padding: 6px 8px;
   cursor: grab;
+  touch-action: none;
   user-select: none;
   border-bottom: 1px solid rgba(0, 255, 65, 0.16);
   border-radius: 6px 6px 0 0;
@@ -636,11 +641,18 @@ h1 {
 
 .winamp-seek .slider-track {
   height: 10px;
+  border-color: rgba(132, 255, 159, 0.34);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 65, 0.08), rgba(88, 215, 255, 0.06)),
+    rgba(0, 0, 0, 0.72);
 }
 
 .winamp-seek .slider-thumb {
   width: 13px;
   height: 13px;
+  background: #84ff9f;
+  border-color: rgba(214, 255, 54, 0.82);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.62);
 }
 
 .winamp-controls {
@@ -689,11 +701,18 @@ h1 {
 
 .winamp-volume .slider-track {
   height: 9px;
+  border-color: rgba(132, 255, 159, 0.3);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 65, 0.08), rgba(214, 255, 54, 0.05)),
+    rgba(0, 0, 0, 0.68);
 }
 
 .winamp-volume .slider-thumb {
   width: 12px;
   height: 12px;
+  background: #d6ff36;
+  border-color: rgba(132, 255, 159, 0.86);
+  box-shadow: 0 0 8px rgba(214, 255, 54, 0.48);
 }
 
 .winamp-volume strong {
@@ -765,6 +784,9 @@ h1 {
 .winamp-songlist {
   max-height: 158px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 4px 0;
   background:
     linear-gradient(rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.18)),
@@ -836,6 +858,7 @@ h1 {
   background: rgba(8, 12, 8, 0.9);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.58);
   backdrop-filter: blur(18px);
+  touch-action: manipulation;
 }
 
 .dock-left,
@@ -1086,10 +1109,17 @@ h1 {
   flex: 1;
 }
 
+.slider-field {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+}
+
 .slider-track {
   position: relative;
   height: 14px;
   cursor: pointer;
+  touch-action: none;
   border: 1px solid rgba(0, 255, 65, 0.22);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.56);
@@ -1449,6 +1479,76 @@ h1 {
 
   .winamp-titlebar button {
     display: none;
+  }
+
+  .visual-mode {
+    min-height: 100dvh;
+    padding: 6vh 14px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .visual-title {
+    width: min(100% - 24px, 560px);
+  }
+
+  .visual-title h1 {
+    font-size: clamp(2.8rem, 17vw, 5.6rem);
+  }
+
+  .winamp-mini {
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .winamp-titlebar {
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+
+  .winamp-controls button,
+  .winamp-drawer-toggle,
+  .winamp-song-row {
+    min-height: 44px;
+  }
+
+  .winamp-volume {
+    grid-template-columns: 34px minmax(0, 1fr) 38px;
+    min-height: 48px;
+    padding-bottom: 6px;
+  }
+
+  .winamp-volume .slider-field,
+  .winamp-seek .slider-field {
+    min-height: 44px;
+  }
+
+  .winamp-volume .slider-track,
+  .winamp-seek .slider-track {
+    height: 13px;
+  }
+
+  .winamp-volume .slider-thumb,
+  .winamp-seek .slider-thumb {
+    width: 18px;
+    height: 18px;
+  }
+
+  .winamp-vis-row {
+    grid-template-columns: 34px repeat(4, minmax(0, 1fr));
+    padding: 8px;
+  }
+
+  .winamp-vis-row button {
+    min-height: 44px;
+    font-size: 0.5rem;
+  }
+
+  .winamp-songlist {
+    max-height: clamp(96px, calc(100dvh - 360px), 220px);
   }
 
   .deck-hero,

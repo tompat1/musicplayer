@@ -41,6 +41,7 @@ function DurationProbe({ track, onDuration }) {
 
 function Slider({ label, value, onChange }) {
   const sliderRef = useRef(null);
+  const activePointerId = useRef(null);
 
   const updateValue = useCallback(
     (event) => {
@@ -63,10 +64,18 @@ function Slider({ label, value, onChange }) {
         tabIndex="0"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
+          activePointerId.current = event.pointerId;
+          event.preventDefault();
           updateValue(event);
         }}
         onPointerMove={(event) => {
-          if (event.buttons) updateValue(event);
+          if (activePointerId.current === event.pointerId) updateValue(event);
+        }}
+        onPointerUp={(event) => {
+          if (activePointerId.current === event.pointerId) activePointerId.current = null;
+        }}
+        onPointerCancel={(event) => {
+          if (activePointerId.current === event.pointerId) activePointerId.current = null;
         }}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') onChange(clamp(value - 0.02, 0, 1));
@@ -568,12 +577,34 @@ export default function AudioPlayer({ tracks = [] }) {
       if (matches) {
         setIsMinimized(true);
         setDocked(null);
+        setMiniPosition(null);
       }
     };
 
     syncMobileMode();
     mediaQuery.addEventListener('change', syncMobileMode);
     return () => mediaQuery.removeEventListener('change', syncMobileMode);
+  }, []);
+
+  useEffect(() => {
+    const keepMiniInViewport = () => {
+      setMiniPosition((position) => {
+        if (!position || !miniRef.current) return position;
+        const width = miniRef.current.offsetWidth || 292;
+        const height = miniRef.current.offsetHeight || 240;
+        return {
+          x: clamp(position.x, 0, Math.max(0, window.innerWidth - width)),
+          y: clamp(position.y, 0, Math.max(0, window.innerHeight - height)),
+        };
+      });
+    };
+
+    window.addEventListener('resize', keepMiniInViewport);
+    window.addEventListener('orientationchange', keepMiniInViewport);
+    return () => {
+      window.removeEventListener('resize', keepMiniInViewport);
+      window.removeEventListener('orientationchange', keepMiniInViewport);
+    };
   }, []);
 
   useEffect(() => {
@@ -715,6 +746,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const onMiniTitlePointerDown = useCallback((event) => {
     if (event.target.tagName === 'BUTTON') return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
     const rect = miniRef.current.getBoundingClientRect();
     miniDragOffset.current = {
       x: event.clientX - rect.left,
@@ -727,6 +759,7 @@ export default function AudioPlayer({ tracks = [] }) {
 
   const onMiniTitlePointerMove = useCallback((event) => {
     if (!miniDragging.current) return;
+    event.preventDefault();
     const width = miniRef.current?.offsetWidth || 320;
     const height = miniRef.current?.offsetHeight || 190;
     const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
@@ -751,13 +784,13 @@ export default function AudioPlayer({ tracks = [] }) {
     };
     const closestSide = Object.entries(edgeDistances).sort((a, b) => a[1] - b[1])[0];
 
-    if (closestSide[1] <= SNAP_PX) {
+    if (!isMobile && closestSide[1] <= SNAP_PX) {
       setDocked(closestSide[0]);
       return;
     }
 
     setMiniPosition({ x, y });
-  }, []);
+  }, [isMobile]);
 
   const durationProbes = tracks.map((track) => (
     <DurationProbe key={track.filename} track={track} onDuration={setTrackDuration} />
