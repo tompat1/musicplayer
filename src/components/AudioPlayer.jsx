@@ -152,18 +152,24 @@ function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext }) {
 
 function WinampMiniPlayer({
   track,
+  tracks,
+  currentIndex,
   playing,
   currentTime,
   durationLabel,
   progress,
   position,
   dragging,
+  playlistOpen,
+  durations,
   onSeek,
   onToggle,
   onStop,
   onPrevious,
   onNext,
   onRestore,
+  onSelect,
+  onTogglePlaylist,
   onTitlePointerDown,
   onTitlePointerMove,
   onTitlePointerUp,
@@ -181,7 +187,7 @@ function WinampMiniPlayer({
         onPointerUp={onTitlePointerUp}
       >
         <span>MUSICPLAYER MINI</span>
-        <button type="button" onClick={onRestore} title="Restore full player">FULL</button>
+        <button type="button" onClick={onRestore} title="Open full-page player">FULL PAGE</button>
       </div>
 
       <div className="winamp-lcd">
@@ -210,6 +216,38 @@ function WinampMiniPlayer({
         </button>
         <button type="button" onClick={onStop} title="Stop">STOP</button>
         <button type="button" onClick={onNext} title="Next track">NEXT</button>
+      </div>
+
+      <div className="winamp-drawer">
+        <button className="winamp-drawer-toggle" type="button" onClick={onTogglePlaylist} aria-expanded={playlistOpen}>
+          <span>Playlist ({tracks.length})</span>
+          <span>{playlistOpen ? 'Hide' : 'Show'}</span>
+        </button>
+
+        {playlistOpen && (
+          <div className="winamp-songlist" role="list">
+            {tracks.length === 0 ? (
+              <div className="winamp-empty">Drop tracks into /public/assets/audio</div>
+            ) : (
+              tracks.map((playlistTrack, index) => {
+                const isActive = index === currentIndex;
+                return (
+                  <button
+                    type="button"
+                    key={playlistTrack.filename}
+                    className="winamp-song-row"
+                    data-active={isActive}
+                    onClick={() => onSelect(index)}
+                  >
+                    <span>{isActive && playing ? 'PLAY' : String(index + 1).padStart(2, '0')}</span>
+                    <strong>{playlistTrack.title}</strong>
+                    <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -324,11 +362,12 @@ export default function AudioPlayer({ tracks = [] }) {
   const [repeat, setRepeat] = useState(false);
   const [query, setQuery] = useState('');
   const [audioError, setAudioError] = useState('');
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [durations, setDurations] = useState({});
   const [miniPosition, setMiniPosition] = useState(null);
   const [docked, setDocked] = useState(null);
   const [isDraggingMini, setIsDraggingMini] = useState(false);
+  const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -555,18 +594,24 @@ export default function AudioPlayer({ tracks = [] }) {
           ) : (
             <WinampMiniPlayer
               track={currentTrack}
+              tracks={tracks}
+              currentIndex={trackIndex}
               playing={isPlaying}
               currentTime={currentTime}
               durationLabel={getDurationLabel(currentTrack, duration)}
               progress={progress}
               position={miniPosition}
               dragging={isDraggingMini}
+              playlistOpen={miniPlaylistOpen}
+              durations={durations}
               onSeek={seek}
               onToggle={togglePlay}
               onStop={stop}
               onPrevious={previous}
               onNext={next}
               onRestore={restoreFullPlayer}
+              onSelect={selectTrack}
+              onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}
               onTitlePointerDown={onMiniTitlePointerDown}
               onTitlePointerMove={onMiniTitlePointerMove}
               onTitlePointerUp={onMiniTitlePointerUp}
@@ -586,7 +631,7 @@ export default function AudioPlayer({ tracks = [] }) {
           <div className="deck-stats" aria-label="Catalog summary">
             <span>{tracks.length} tracks</span>
             <span>{new Set(tracks.map((track) => track.format).filter(Boolean)).size || 0} formats</span>
-            <button type="button" onClick={minimize}>Minimize</button>
+            <button className="mini-return-button" type="button" onClick={minimize}>Return to Mini Player</button>
           </div>
         </div>
 
@@ -632,6 +677,10 @@ export default function AudioPlayer({ tracks = [] }) {
               <button type="button" onClick={next} disabled={!hasTracks} title="Next track">
                 NEXT
               </button>
+            </div>
+
+            <div className="full-player-actions">
+              <button type="button" onClick={minimize}>Return to Floating Mini Player</button>
             </div>
 
             <div className="utility-row">

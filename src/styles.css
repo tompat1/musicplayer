@@ -171,6 +171,15 @@ h1 {
   cursor: pointer;
 }
 
+.deck-stats .mini-return-button {
+  color: var(--text);
+  border-color: rgba(214, 255, 54, 0.46);
+  background:
+    linear-gradient(135deg, rgba(214, 255, 54, 0.18), rgba(88, 215, 255, 0.1)),
+    rgba(0, 255, 65, 0.08);
+  box-shadow: 0 0 22px rgba(0, 255, 65, 0.16);
+}
+
 .now-playing-grid {
   display: grid;
   grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1fr);
@@ -442,12 +451,17 @@ h1 {
   top: 28px;
   left: 28px;
   z-index: 30;
-  width: min(330px, calc(100vw - 32px));
-  border: 1px solid rgba(0, 255, 65, 0.28);
+  width: min(292px, calc(100vw - 24px));
+  border: 1px solid rgba(0, 255, 65, 0.42);
   border-radius: 6px;
-  background: rgba(8, 12, 8, 0.9);
+  background:
+    linear-gradient(135deg, rgba(255, 51, 92, 0.14), transparent 28%),
+    linear-gradient(225deg, rgba(88, 215, 255, 0.12), transparent 30%),
+    rgba(8, 12, 8, 0.92);
   box-shadow:
     0 18px 54px rgba(0, 0, 0, 0.68),
+    0 0 26px rgba(0, 255, 65, 0.18),
+    0 0 42px rgba(255, 51, 92, 0.08),
     0 0 0 1px rgba(255, 255, 255, 0.05),
     inset 0 1px 0 rgba(0, 255, 65, 0.08);
   backdrop-filter: blur(24px);
@@ -481,7 +495,9 @@ h1 {
   user-select: none;
   border-bottom: 1px solid rgba(0, 255, 65, 0.16);
   border-radius: 6px 6px 0 0;
-  background: linear-gradient(90deg, #00aa2c, #004d14);
+  background:
+    linear-gradient(90deg, rgba(255, 51, 92, 0.74), rgba(0, 170, 44, 0.9) 46%, rgba(88, 215, 255, 0.62)),
+    #004d14;
 }
 
 .winamp-titlebar:active {
@@ -491,7 +507,7 @@ h1 {
 .winamp-titlebar span {
   overflow: hidden;
   color: #e0ffe8;
-  font: 900 0.68rem/1 var(--mono);
+  font: 900 0.64rem/1 var(--mono);
   letter-spacing: 0.12em;
   text-overflow: ellipsis;
   text-shadow: 0 0 8px rgba(0, 255, 65, 0.74);
@@ -500,13 +516,14 @@ h1 {
 
 .winamp-titlebar button {
   min-height: 22px;
-  padding: 4px 7px;
+  padding: 4px 6px;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 2px;
   color: rgba(255, 255, 255, 0.82);
   background: rgba(0, 0, 0, 0.18);
-  font: 800 0.58rem/1 var(--mono);
+  font: 800 0.52rem/1 var(--mono);
+  white-space: nowrap;
 }
 
 .winamp-lcd {
@@ -514,7 +531,9 @@ h1 {
   padding: 9px 10px;
   border: 1px solid rgba(0, 255, 65, 0.26);
   border-radius: 3px;
-  background: #001a05;
+  background:
+    linear-gradient(rgba(0, 255, 65, 0.08), transparent),
+    #001a05;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.82);
 }
 
@@ -527,7 +546,7 @@ h1 {
 }
 
 .winamp-time-row strong {
-  color: var(--green);
+  color: #84ff9f;
   font-size: 1.45rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -542,7 +561,7 @@ h1 {
 .winamp-marquee {
   overflow: hidden;
   width: 100%;
-  color: var(--green);
+  color: #84ff9f;
   font: 800 0.68rem/1 var(--mono);
   letter-spacing: 0.08em;
   text-shadow: 0 0 6px rgba(0, 255, 65, 0.72);
@@ -576,7 +595,7 @@ h1 {
 
 .winamp-meter span[data-playing="true"] {
   height: calc(28% + ((var(--bar) * 17) % 58) * 1%);
-  background: linear-gradient(to top, var(--green), var(--acid), #fff785);
+  background: linear-gradient(to top, var(--green), var(--acid), #ff68b4, #58d7ff);
   box-shadow: 0 0 5px rgba(0, 255, 65, 0.58);
   animation: winamp-meter 480ms ease-in-out calc(var(--bar) * 38ms) infinite alternate;
 }
@@ -608,7 +627,9 @@ h1 {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 3px;
   color: #b8c8bc;
-  background: linear-gradient(135deg, #3a3a3a, #252525);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 38%),
+    linear-gradient(135deg, #3a3a3a, #252525);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.42);
   font: 900 0.6rem/1 var(--mono);
   letter-spacing: 0.05em;
@@ -623,6 +644,91 @@ h1 {
 .winamp-controls .winamp-play {
   color: var(--green);
   border-color: rgba(0, 255, 65, 0.34);
+}
+
+.winamp-drawer {
+  overflow: hidden;
+  border-top: 1px solid rgba(0, 255, 65, 0.12);
+}
+
+.winamp-drawer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 32px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+  color: #84ff9f;
+  background:
+    linear-gradient(90deg, rgba(0, 255, 65, 0.08), rgba(255, 51, 92, 0.05), rgba(88, 215, 255, 0.06));
+  font: 900 0.6rem/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.winamp-songlist {
+  max-height: 158px;
+  overflow-y: auto;
+  padding: 4px 0;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.18)),
+    repeating-linear-gradient(0deg, rgba(0, 255, 65, 0.04) 0 1px, transparent 1px 18px);
+}
+
+.winamp-song-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 42px;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: rgba(132, 255, 159, 0.68);
+  background: transparent;
+  text-align: left;
+}
+
+.winamp-song-row[data-active="true"] {
+  border-left-color: var(--green);
+  color: #84ff9f;
+  background: rgba(0, 255, 65, 0.1);
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.62);
+}
+
+.winamp-song-row:hover {
+  color: var(--acid);
+  background: rgba(214, 255, 54, 0.07);
+}
+
+.winamp-song-row span,
+.winamp-song-row small {
+  font: 900 0.56rem/1 var(--mono);
+}
+
+.winamp-song-row strong {
+  overflow: hidden;
+  font: 900 0.61rem/1.1 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.winamp-song-row small {
+  justify-self: end;
+  color: rgba(132, 255, 159, 0.52);
+}
+
+.winamp-empty {
+  padding: 10px;
+  color: rgba(132, 255, 159, 0.48);
+  font: 800 0.58rem/1.35 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .dock-handle {
@@ -946,6 +1052,32 @@ h1 {
   background: linear-gradient(135deg, rgba(0, 255, 65, 0.22), rgba(214, 255, 54, 0.13));
   color: var(--text);
   box-shadow: 0 0 26px rgba(0, 255, 65, 0.16);
+}
+
+.full-player-actions {
+  display: flex;
+}
+
+.full-player-actions button {
+  width: min(100%, 360px);
+  min-height: 48px;
+  padding: 13px 16px;
+  cursor: pointer;
+  border: 1px solid rgba(214, 255, 54, 0.48);
+  border-radius: 4px;
+  color: var(--text);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 65, 0.18), rgba(255, 51, 92, 0.12), rgba(88, 215, 255, 0.16)),
+    rgba(0, 0, 0, 0.24);
+  box-shadow: 0 0 28px rgba(0, 255, 65, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font: 900 0.78rem/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.full-player-actions button:hover {
+  border-color: rgba(214, 255, 54, 0.8);
+  color: var(--acid);
 }
 
 .utility-row {
