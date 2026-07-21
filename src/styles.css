@@ -1843,6 +1843,20 @@ h1 {
   color: #05060b;
 }
 
+.winamp-preset-select {
+  max-width: 66px;
+  min-height: 13px;
+  padding: 0 2px;
+  border: 1px solid #06070d;
+  border-radius: 1px;
+  color: #05060b;
+  background:
+    linear-gradient(135deg, #f7fbff, #cfd7e0 48%, #8c98a7);
+  box-shadow: inset 1px 1px 0 #fff;
+  font: 900 0.46rem/1 var(--mono);
+  text-transform: uppercase;
+}
+
 .winamp-led-button {
   display: inline-flex;
   align-items: center;

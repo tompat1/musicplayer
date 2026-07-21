@@ -4,6 +4,8 @@ const SNAP_PX = 80;
 const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const EQ_GAIN_MULTIPLIER = 1.75;
+const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
 const playerBrand = 'RYNELL PLAYER';
 
 const formatTime = (seconds) => {
@@ -38,8 +40,11 @@ const isKeyboardControlTarget = (target) => {
 
 const applyEqSettings = (graph, gains, enabled) => {
   if (!graph?.filters) return;
+  const now = graph.audioContext.currentTime;
   graph.filters.forEach((filter, index) => {
-    filter.gain.value = enabled ? gains[index] || 0 : 0;
+    const targetGain = enabled ? (gains[index] || 0) * EQ_GAIN_MULTIPLIER : 0;
+    filter.gain.cancelScheduledValues(now);
+    filter.gain.setTargetAtTime(targetGain, now, 0.015);
   });
 };
 
@@ -58,26 +63,33 @@ const ensureAudioGraph = async (audio, gains = DEFAULT_EQ_GAINS, enabled = true)
     const audioContext = new AudioContextClass();
     const source = audioContext.createMediaElementSource(audio);
     const analyser = audioContext.createAnalyser();
+    const compressor = audioContext.createDynamicsCompressor();
     const filters = EQ_BANDS.map((frequency, index) => {
       const filter = audioContext.createBiquadFilter();
       filter.type = index === 0 ? 'lowshelf' : index === EQ_BANDS.length - 1 ? 'highshelf' : 'peaking';
       filter.frequency.value = frequency;
-      filter.Q.value = 1.1;
+      filter.Q.value = index === 0 || index === EQ_BANDS.length - 1 ? 0.7 : 1.35;
       filter.gain.value = 0;
       return filter;
     });
 
     analyser.fftSize = 256;
     analyser.smoothingTimeConstant = 0.78;
+    compressor.threshold.value = -8;
+    compressor.knee.value = 18;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.006;
+    compressor.release.value = 0.18;
 
     source.connect(filters[0]);
     filters.forEach((filter, index) => {
       const nextNode = filters[index + 1] || analyser;
       filter.connect(nextNode);
     });
-    analyser.connect(audioContext.destination);
+    analyser.connect(compressor);
+    compressor.connect(audioContext.destination);
 
-    const graph = { analyser, audioContext, filters };
+    const graph = { analyser, audioContext, compressor, filters };
     audioGraphs.set(audio, graph);
     applyEqSettings(graph, gains, enabled);
     await audioContext.resume();
@@ -483,6 +495,7 @@ function WinampMiniPlayer({
   eqEnabled,
   eqGains,
   eqPanelOpen,
+  eqPresets,
   audioRef,
   onSeek,
   onVolumeChange,
@@ -495,6 +508,8 @@ function WinampMiniPlayer({
   onToggleEq,
   onToggleEqPanel,
   onEqGainChange,
+  onEqPresetLoad,
+  onEqPresetSave,
   onRestore,
   onSelect,
   onTogglePlaylist,
@@ -588,6 +603,21 @@ function WinampMiniPlayer({
         <WinampWindowBar title="RYNELL EQUALIZER">
           <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
           <WinampLedButton active={eqPanelOpen} onClick={onToggleEqPanel}>EQ</WinampLedButton>
+          <select
+            className="winamp-preset-select"
+            defaultValue=""
+            onChange={(event) => {
+              if (event.target.value) onEqPresetLoad(event.target.value);
+              event.target.value = '';
+            }}
+            aria-label="Load EQ preset"
+          >
+            <option value="">PRESET</option>
+            {Object.keys(eqPresets).map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <button type="button" onClick={onEqPresetSave}>SAVE</button>
         </WinampWindowBar>
         <div className="winamp-eq-body" data-open={eqPanelOpen}>
           <div className="winamp-preamp">
@@ -598,8 +628,8 @@ function WinampMiniPlayer({
             <div className="winamp-eq-band" key={band} style={{ '--eq-gain': eqGains[index] }}>
               <input
                 type="range"
-                min="-12"
-                max="12"
+                min="-15"
+                max="15"
                 step="1"
                 value={eqGains[index]}
                 onChange={(event) => onEqGainChange(index, Number(event.target.value))}
@@ -781,6 +811,14 @@ export default function AudioPlayer({ tracks = [] }) {
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
   const [eqPanelOpen, setEqPanelOpen] = useState(true);
+  const [eqPresets, setEqPresets] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(EQ_PRESETS_STORAGE_KEY)) || {};
+    } catch {
+      return {};
+    }
+  });
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -968,9 +1006,32 @@ export default function AudioPlayer({ tracks = [] }) {
 
   const setEqGain = useCallback((index, gain) => {
     setEqGains((currentGains) => currentGains.map((currentGain, gainIndex) => (
-      gainIndex === index ? clamp(gain, -12, 12) : currentGain
+      gainIndex === index ? clamp(gain, -15, 15) : currentGain
     )));
   }, []);
+
+  const loadEqPreset = useCallback((name) => {
+    const preset = eqPresets[name];
+    if (Array.isArray(preset) && preset.length === EQ_BANDS.length) {
+      setEqGains(preset.map((gain) => clamp(Number(gain) || 0, -15, 15)));
+      setEqEnabled(true);
+    }
+  }, [eqPresets]);
+
+  const saveEqPreset = useCallback(() => {
+    const fallbackName = `Preset ${Object.keys(eqPresets).length + 1}`;
+    const name = window.prompt('Save EQ preset as:', fallbackName)?.trim();
+    if (!name) return;
+
+    setEqPresets((currentPresets) => {
+      const nextPresets = {
+        ...currentPresets,
+        [name]: eqGains,
+      };
+      window.localStorage.setItem(EQ_PRESETS_STORAGE_KEY, JSON.stringify(nextPresets));
+      return nextPresets;
+    });
+  }, [eqGains, eqPresets]);
 
   const minimize = useCallback(() => {
     setIsMinimized(true);
@@ -1152,6 +1213,7 @@ export default function AudioPlayer({ tracks = [] }) {
               eqEnabled={eqEnabled}
               eqGains={eqGains}
               eqPanelOpen={eqPanelOpen}
+              eqPresets={eqPresets}
               audioRef={audioRef}
               onSeek={seek}
               onVolumeChange={setVolume}
@@ -1164,6 +1226,8 @@ export default function AudioPlayer({ tracks = [] }) {
               onToggleEq={() => setEqEnabled((value) => !value)}
               onToggleEqPanel={() => setEqPanelOpen((value) => !value)}
               onEqGainChange={setEqGain}
+              onEqPresetLoad={loadEqPreset}
+              onEqPresetSave={saveEqPreset}
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}
