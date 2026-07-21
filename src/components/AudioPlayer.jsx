@@ -376,17 +376,17 @@ function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext, onTogg
   );
 }
 
-function WinampWindowBar({ title, children, onPointerDown, onPointerMove, onPointerUp }) {
+function WinampWindowBar({ title, children, quiet = false, onPointerDown, onPointerMove, onPointerUp }) {
   return (
     <div
-      className="winamp-window-bar"
+      className={`winamp-window-bar${quiet ? ' is-quiet' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
-      <span className="winamp-title-lines" aria-hidden="true" />
+      {!quiet && <span className="winamp-title-lines" aria-hidden="true" />}
       <strong>{title}</strong>
-      <span className="winamp-title-lines" aria-hidden="true" />
+      {!quiet && <span className="winamp-title-lines" aria-hidden="true" />}
       <div className="winamp-window-tools">{children}</div>
     </div>
   );
@@ -495,7 +495,6 @@ function WinampMiniPlayer({
   onToggleEq,
   onToggleEqPanel,
   onEqGainChange,
-  onEqReset,
   onRestore,
   onSelect,
   onTogglePlaylist,
@@ -516,6 +515,7 @@ function WinampMiniPlayer({
       <section className="winamp-panel winamp-player-panel" aria-label="Rynell player">
         <WinampWindowBar
           title={playerBrand}
+          quiet
           onPointerDown={onTitlePointerDown}
           onPointerMove={onTitlePointerMove}
           onPointerUp={onTitlePointerUp}
@@ -594,7 +594,6 @@ function WinampMiniPlayer({
         <WinampWindowBar title="RYNELL EQUALIZER">
           <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
           <WinampLedButton active={eqPanelOpen} onClick={onToggleEqPanel}>EQ</WinampLedButton>
-          <button type="button" onClick={onEqReset}>AUTO</button>
         </WinampWindowBar>
         <div className="winamp-eq-body" data-open={eqPanelOpen}>
           <div className="winamp-preamp">
@@ -979,10 +978,6 @@ export default function AudioPlayer({ tracks = [] }) {
     )));
   }, []);
 
-  const resetEq = useCallback(() => {
-    setEqGains(DEFAULT_EQ_GAINS);
-  }, []);
-
   const minimize = useCallback(() => {
     setIsMinimized(true);
     setDocked(null);
@@ -1175,7 +1170,6 @@ export default function AudioPlayer({ tracks = [] }) {
               onToggleEq={() => setEqEnabled((value) => !value)}
               onToggleEqPanel={() => setEqPanelOpen((value) => !value)}
               onEqGainChange={setEqGain}
-              onEqReset={resetEq}
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}

@@ -1797,6 +1797,19 @@ h1 {
   text-shadow: 1px 1px 0 #000;
 }
 
+.winamp-window-bar.is-quiet {
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: start;
+}
+
+.winamp-window-bar.is-quiet strong {
+  padding-left: 4px;
+}
+
+.winamp-window-bar.is-quiet .winamp-window-tools {
+  justify-self: end;
+}
+
 .winamp-window-bar:active {
   cursor: grabbing;
 }
