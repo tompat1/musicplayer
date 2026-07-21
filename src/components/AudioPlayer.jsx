@@ -282,7 +282,7 @@ function VisualMode({ track, playing, audioRef, visualMode }) {
   );
 }
 
-function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext }) {
+function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext, onToggle }) {
   const isVertical = side === 'left' || side === 'right';
 
   return (
@@ -290,8 +290,11 @@ function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext }) {
       <button type="button" onClick={onPrevious} title="Previous track">
         {isVertical ? 'UP' : 'PREV'}
       </button>
-      <button className="dock-pulse" type="button" onClick={onRestore} title="Restore floating miniplayer">
+      <button className="dock-pulse" type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
         {Array.from({ length: 5 }, (_, index) => <span key={index} style={{ '--bar': index }} />)}
+      </button>
+      <button type="button" onClick={onRestore} title="Restore floating miniplayer">
+        OPEN
       </button>
       <button type="button" onClick={onNext} title="Next track">
         {isVertical ? 'DN' : 'NEXT'}
@@ -765,6 +768,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onRestore={() => setDocked(null)}
               onPrevious={previous}
               onNext={next}
+              onToggle={togglePlay}
             />
           ) : (
             <WinampMiniPlayer
