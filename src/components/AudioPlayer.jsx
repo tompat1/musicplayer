@@ -647,7 +647,7 @@ function WinampMiniPlayer({
         </WinampWindowBar>
 
         <div className="winamp-vis-row" aria-label="Visualizer mode">
-          <span>VIS</span>
+          <span>VISUALS</span>
           {['candy', 'bars', 'wave', 'idle'].map((mode) => (
             <button
               type="button"
