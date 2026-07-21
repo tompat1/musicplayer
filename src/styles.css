@@ -1742,11 +1742,14 @@ h1 {
   border: 1px solid #03040a;
   border-radius: 2px;
   background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 4px),
     linear-gradient(135deg, rgba(103, 113, 153, 0.28), transparent 36%),
     linear-gradient(#31364f, #161927 28%, #0c0e18);
   box-shadow:
     inset 1px 1px 0 #8c94b4,
-    inset -1px -1px 0 #05060b;
+    inset -1px -1px 0 #05060b,
+    inset 0 0 0 2px rgba(255, 255, 255, 0.025);
 }
 
 .winamp-panel + .winamp-panel {
@@ -1765,6 +1768,7 @@ h1 {
   user-select: none;
   color: #f7f7d0;
   background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 4px),
     linear-gradient(#343a58, #171a2a),
     #20243a;
   font: 900 0.58rem/1 var(--mono);
@@ -1802,6 +1806,27 @@ h1 {
   font: 900 0.48rem/1 var(--mono);
 }
 
+.winamp-led-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.winamp-led-button > span {
+  width: 5px;
+  height: 5px;
+  border: 1px solid #020403;
+  border-radius: 1px;
+  background: #18321c;
+  box-shadow: inset 0 0 2px #000;
+}
+
+.winamp-led-button[data-active="true"] > span {
+  background: #00ff36;
+  box-shadow: 0 0 5px rgba(0, 255, 65, 0.92), inset 0 0 1px #eaffc7;
+}
+
 .winamp-player-body {
   display: grid;
   grid-template-columns: 18px 72px minmax(0, 1fr);
@@ -1821,7 +1846,9 @@ h1 {
   align-items: center;
   gap: 4px;
   color: #00ff36;
-  background: #020403;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 255, 54, 0.08) 0 1px, transparent 1px 6px),
+    #020403;
   text-shadow: 0 0 7px rgba(0, 255, 65, 0.88);
 }
 
@@ -1845,7 +1872,9 @@ h1 {
   padding: 2px 4px;
   border: 1px solid #030504;
   color: #00ff36;
-  background: #020403;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 255, 54, 0.055) 0 1px, transparent 1px 4px),
+    #020403;
   font-size: 0.58rem;
 }
 
@@ -1947,6 +1976,7 @@ h1 {
   border-radius: 1px;
   color: #eef3ff;
   background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.9) 0 10%, transparent 10% 46%, rgba(0, 0, 0, 0.32) 46% 100%),
     linear-gradient(135deg, #f0f2ff 0 12%, #8b94b2 45%, #353b52 46% 100%);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.72),
@@ -2008,6 +2038,7 @@ h1 {
   min-height: 17px;
   color: #b8c0dc;
   background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.18) 0 42%, transparent 42%),
     linear-gradient(#283048, #111625);
 }
 
@@ -2038,7 +2069,7 @@ h1 {
 }
 
 .winamp-preamp i,
-.winamp-eq-band i {
+.winamp-eq-band input {
   position: relative;
   width: 5px;
   height: 52px;
@@ -2049,11 +2080,10 @@ h1 {
   box-shadow: inset 1px 0 0 #5e6682;
 }
 
-.winamp-preamp i::after,
-.winamp-eq-band i::after {
+.winamp-preamp i::after {
   position: absolute;
   left: 50%;
-  top: calc(8px + ((var(--eq, 4) * 7) % 30px));
+  top: 25px;
   width: 13px;
   height: 8px;
   content: "";
@@ -2061,6 +2091,51 @@ h1 {
   background:
     linear-gradient(#eef0ff, #8d96b4 55%, #34394e);
   transform: translateX(-50%);
+}
+
+.winamp-eq-band input {
+  appearance: none;
+  -webkit-appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  cursor: pointer;
+}
+
+.winamp-eq-band input::-webkit-slider-runnable-track {
+  width: 5px;
+  height: 52px;
+  border: 1px solid #080a10;
+  background:
+    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px 25px, #e1c65b 25px 27px, transparent 27px),
+    #24283b;
+  box-shadow: inset 1px 0 0 #5e6682;
+}
+
+.winamp-eq-band input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 9px;
+  margin-left: -5px;
+  border: 1px solid #05060b;
+  border-radius: 1px;
+  background:
+    linear-gradient(#f7f8ff, #9da6c3 55%, #34394e);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.8), inset -1px -1px 0 #10131f;
+}
+
+.winamp-eq-band input::-moz-range-track {
+  width: 5px;
+  height: 52px;
+  border: 1px solid #080a10;
+  background: #24283b;
+}
+
+.winamp-eq-band input::-moz-range-thumb {
+  width: 14px;
+  height: 9px;
+  border: 1px solid #05060b;
+  border-radius: 1px;
+  background: #9da6c3;
 }
 
 .winamp-preamp span,

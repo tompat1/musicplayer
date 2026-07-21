@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const SNAP_PX = 80;
 const audioGraphs = new WeakMap();
+const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
+const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -31,6 +33,57 @@ const isKeyboardControlTarget = (target) => {
       'input, textarea, select, button, a, [contenteditable="true"], [role="slider"], [data-player-shortcuts="ignore"]',
     ),
   );
+};
+
+const applyEqSettings = (graph, gains, enabled) => {
+  if (!graph?.filters) return;
+  graph.filters.forEach((filter, index) => {
+    filter.gain.value = enabled ? gains[index] || 0 : 0;
+  });
+};
+
+const ensureAudioGraph = async (audio, gains = DEFAULT_EQ_GAINS, enabled = true) => {
+  if (!audio) return null;
+  const existingGraph = audioGraphs.get(audio);
+
+  if (existingGraph) {
+    applyEqSettings(existingGraph, gains, enabled);
+    await existingGraph.audioContext.resume();
+    return existingGraph;
+  }
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContextClass();
+    const source = audioContext.createMediaElementSource(audio);
+    const analyser = audioContext.createAnalyser();
+    const filters = EQ_BANDS.map((frequency, index) => {
+      const filter = audioContext.createBiquadFilter();
+      filter.type = index === 0 ? 'lowshelf' : index === EQ_BANDS.length - 1 ? 'highshelf' : 'peaking';
+      filter.frequency.value = frequency;
+      filter.Q.value = 1.1;
+      filter.gain.value = 0;
+      return filter;
+    });
+
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.78;
+
+    source.connect(filters[0]);
+    filters.forEach((filter, index) => {
+      const nextNode = filters[index + 1] || analyser;
+      filter.connect(nextNode);
+    });
+    analyser.connect(audioContext.destination);
+
+    const graph = { analyser, audioContext, filters };
+    audioGraphs.set(audio, graph);
+    applyEqSettings(graph, gains, enabled);
+    await audioContext.resume();
+    return graph;
+  } catch {
+    return null;
+  }
 };
 
 function DurationProbe({ track, onDuration }) {
@@ -150,7 +203,7 @@ function CoverArt({ track, playing }) {
   );
 }
 
-function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
+function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnabled }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -210,30 +263,6 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
       });
     };
 
-    const ensureGraph = async () => {
-      if (graph) {
-        await graph.audioContext.resume();
-        return graph;
-      }
-
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const audioContext = new AudioContextClass();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.78;
-        const source = audioContext.createMediaElementSource(audio);
-        source.connect(analyser);
-        analyser.connect(audioContext.destination);
-        graph = { analyser, audioContext };
-        audioGraphs.set(audio, graph);
-        await audioContext.resume();
-        return graph;
-      } catch {
-        return null;
-      }
-    };
-
     const draw = () => {
       const activeGraph = graph;
       const width = canvas.width;
@@ -266,7 +295,7 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
     };
 
     const start = async () => {
-      graph = await ensureGraph();
+      graph = await ensureAudioGraph(audio, eqGains, eqEnabled);
       cancelAnimationFrame(frameId);
       draw();
     };
@@ -289,7 +318,7 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
       audio.removeEventListener('pause', stop);
       audio.removeEventListener('ended', stop);
     };
-  }, [audioRef, playing, visualMode]);
+  }, [audioRef, playing, visualMode, eqGains, eqEnabled]);
 
   return (
     <div className="synced-visualizers" aria-hidden="true">
@@ -298,7 +327,7 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
   );
 }
 
-function VisualMode({ track, playing, audioRef, visualMode }) {
+function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }) {
   return (
     <section className="visual-mode" data-playing={playing} data-visual-mode={visualMode} aria-label="Minimized music visualizer">
       <div className="visual-field" aria-hidden="true">
@@ -308,7 +337,13 @@ function VisualMode({ track, playing, audioRef, visualMode }) {
         <div className="visual-prism" />
         <div className="visual-grid" />
       </div>
-      <SyncedCanvasVisualizer audioRef={audioRef} playing={playing} visualMode={visualMode} />
+      <SyncedCanvasVisualizer
+        audioRef={audioRef}
+        playing={playing}
+        visualMode={visualMode}
+        eqGains={eqGains}
+        eqEnabled={eqEnabled}
+      />
 
       <div className="visual-title">
         <p className="eyebrow">Miniplayer visual mode</p>
@@ -356,6 +391,21 @@ function WinampWindowBar({ title, children, onPointerDown, onPointerMove, onPoin
   );
 }
 
+function WinampLedButton({ active, children, className = '', ...props }) {
+  return (
+    <button
+      type="button"
+      className={`winamp-led-button${className ? ` ${className}` : ''}`}
+      data-active={active}
+      aria-pressed={active}
+      {...props}
+    >
+      <span aria-hidden="true" />
+      {children}
+    </button>
+  );
+}
+
 function WinampMiniPlayer({
   track,
   tracks,
@@ -372,6 +422,8 @@ function WinampMiniPlayer({
   visualMode,
   shuffle,
   repeat,
+  eqEnabled,
+  eqGains,
   onSeek,
   onVolumeChange,
   onToggle,
@@ -380,6 +432,9 @@ function WinampMiniPlayer({
   onNext,
   onToggleShuffle,
   onToggleRepeat,
+  onToggleEq,
+  onEqGainChange,
+  onEqReset,
   onRestore,
   onSelect,
   onTogglePlaylist,
@@ -459,26 +514,34 @@ function WinampMiniPlayer({
           </div>
 
           <div className="winamp-mode-buttons">
-            <button type="button" onClick={onToggleShuffle} aria-pressed={shuffle} data-active={shuffle}>SHUFFLE</button>
-            <button type="button" onClick={onToggleRepeat} aria-pressed={repeat} data-active={repeat}>REPEAT</button>
+            <WinampLedButton active={shuffle} onClick={onToggleShuffle}>SHUFFLE</WinampLedButton>
+            <WinampLedButton active={repeat} onClick={onToggleRepeat}>REPEAT</WinampLedButton>
           </div>
         </div>
       </section>
 
       <section className="winamp-panel winamp-eq-panel" aria-label="Winamp equalizer">
         <WinampWindowBar title="WINAMP EQUALIZER">
-          <button type="button" data-active="true">ON</button>
-          <button type="button">AUTO</button>
+          <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
+          <button type="button" onClick={onEqReset}>AUTO</button>
         </WinampWindowBar>
         <div className="winamp-eq-body">
           <div className="winamp-preamp">
             <span>PREAMP</span>
-            <i />
+            <i aria-hidden="true" />
           </div>
-          {['70', '180', '320', '600', '1K', '3K', '6K', '12K', '14K', '16K'].map((band, index) => (
-            <div className="winamp-eq-band" key={band} style={{ '--eq': index }}>
-              <i />
-              <span>{band}</span>
+          {EQ_BANDS.map((band, index) => (
+            <div className="winamp-eq-band" key={band} style={{ '--eq-gain': eqGains[index] }}>
+              <input
+                type="range"
+                min="-12"
+                max="12"
+                step="1"
+                value={eqGains[index]}
+                onChange={(event) => onEqGainChange(index, Number(event.target.value))}
+                aria-label={`${band} hertz EQ gain`}
+              />
+              <span>{band >= 1000 ? `${band / 1000}K` : band}</span>
             </div>
           ))}
         </div>
@@ -486,9 +549,7 @@ function WinampMiniPlayer({
 
       <section className="winamp-panel winamp-playlist-panel" aria-label="Winamp playlist">
         <WinampWindowBar title="WINAMP PLAYLIST">
-          <button type="button" onClick={onTogglePlaylist} aria-expanded={playlistOpen}>
-            {playlistOpen ? 'HIDE' : 'LIST'}
-          </button>
+          <WinampLedButton active={playlistOpen} onClick={onTogglePlaylist} aria-expanded={playlistOpen}>PL</WinampLedButton>
         </WinampWindowBar>
 
         <div className="winamp-vis-row" aria-label="Visualizer mode">
@@ -657,6 +718,8 @@ export default function AudioPlayer({ tracks = [] }) {
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
   const [visualMode, setVisualMode] = useState('candy');
   const [isMobile, setIsMobile] = useState(false);
+  const [eqEnabled, setEqEnabled] = useState(true);
+  const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -753,7 +816,11 @@ export default function AudioPlayer({ tracks = [] }) {
     setDuration(0);
     setAudioError('');
 
-    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+    if (isPlaying) {
+      ensureAudioGraph(audio, eqGains, eqEnabled)
+        .then(() => audio.play())
+        .catch(() => setIsPlaying(false));
+    }
   }, [currentTrack]);
 
   useEffect(() => {
@@ -763,6 +830,11 @@ export default function AudioPlayer({ tracks = [] }) {
   useEffect(() => {
     if (audioRef.current) audioRef.current.muted = isMuted;
   }, [isMuted]);
+
+  useEffect(() => {
+    const graph = audioGraphs.get(audioRef.current);
+    if (graph) applyEqSettings(graph, eqGains, eqEnabled);
+  }, [eqEnabled, eqGains]);
 
   const setTrackDuration = useCallback((filename, seconds) => {
     setDurations((currentDurations) => {
@@ -777,6 +849,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const play = useCallback(async () => {
     if (!audioRef.current || !currentTrack) return;
     try {
+      await ensureAudioGraph(audioRef.current, eqGains, eqEnabled);
       await audioRef.current.play();
       setIsPlaying(true);
       setAudioError('');
@@ -784,7 +857,7 @@ export default function AudioPlayer({ tracks = [] }) {
       setIsPlaying(false);
       setAudioError('This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
     }
-  }, [currentTrack]);
+  }, [currentTrack, eqEnabled, eqGains]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -831,6 +904,16 @@ export default function AudioPlayer({ tracks = [] }) {
     setTrackIndex(index);
     setIsPlaying(true);
   };
+
+  const setEqGain = useCallback((index, gain) => {
+    setEqGains((currentGains) => currentGains.map((currentGain, gainIndex) => (
+      gainIndex === index ? clamp(gain, -12, 12) : currentGain
+    )));
+  }, []);
+
+  const resetEq = useCallback(() => {
+    setEqGains(DEFAULT_EQ_GAINS);
+  }, []);
 
   const minimize = useCallback(() => {
     setIsMinimized(true);
@@ -973,7 +1056,16 @@ export default function AudioPlayer({ tracks = [] }) {
 
       {isMinimized ? (
         <>
-          {!isMobile && <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} visualMode={visualMode} />}
+          {!isMobile && (
+            <VisualMode
+              track={currentTrack}
+              playing={isPlaying}
+              audioRef={audioRef}
+              visualMode={visualMode}
+              eqGains={eqGains}
+              eqEnabled={eqEnabled}
+            />
+          )}
           {docked ? (
             <DockedMiniHandle
               side={docked}
@@ -1000,6 +1092,8 @@ export default function AudioPlayer({ tracks = [] }) {
               visualMode={visualMode}
               shuffle={shuffle}
               repeat={repeat}
+              eqEnabled={eqEnabled}
+              eqGains={eqGains}
               onSeek={seek}
               onVolumeChange={setVolume}
               onToggle={togglePlay}
@@ -1008,6 +1102,9 @@ export default function AudioPlayer({ tracks = [] }) {
               onNext={next}
               onToggleShuffle={() => setShuffle((value) => !value)}
               onToggleRepeat={() => setRepeat((value) => !value)}
+              onToggleEq={() => setEqEnabled((value) => !value)}
+              onEqGainChange={setEqGain}
+              onEqReset={resetEq}
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}
