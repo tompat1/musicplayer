@@ -1866,7 +1866,7 @@ h1 {
 
 .winamp-player-body {
   display: grid;
-  grid-template-columns: 18px 72px minmax(0, 1fr);
+  grid-template-columns: 18px 92px minmax(0, 1fr);
   gap: 7px;
   padding: 8px 8px 3px;
 }
@@ -2018,21 +2018,20 @@ h1 {
 
 .winamp-bottom-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px;
-  gap: 6px 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
   align-items: center;
   padding: 2px 8px 8px;
 }
 
 .winamp-controls {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, 28px) repeat(2, minmax(55px, 1fr));
   gap: 3px;
   padding: 0;
 }
 
-.winamp-controls button,
-.winamp-mode-buttons button {
+.winamp-controls button {
   min-height: 20px;
   padding: 2px 4px;
   cursor: pointer;
@@ -2053,8 +2052,7 @@ h1 {
   text-shadow: none;
 }
 
-.winamp-controls button:hover,
-.winamp-mode-buttons button:hover {
+.winamp-controls button:hover {
   color: var(--skin-button-ink);
   filter: brightness(1.08);
 }
@@ -2071,8 +2069,7 @@ h1 {
   filter: drop-shadow(0 0 4px rgba(0, 255, 54, 0.82));
 }
 
-.winamp-controls button:active,
-.winamp-mode-buttons button:active {
+.winamp-controls button:active {
   background:
     linear-gradient(135deg, #2b3048 0 20%, #707995 48%, #d8ddea 100%);
 }
@@ -2158,6 +2155,8 @@ h1 {
 }
 
 .winamp-volume {
+  justify-self: end;
+  width: 76px;
   display: grid;
   grid-template-columns: 1fr;
   gap: 2px;
@@ -2185,22 +2184,18 @@ h1 {
   box-shadow: none;
 }
 
-.winamp-mode-buttons {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.winamp-mode-buttons button {
+.winamp-controls .winamp-led-button {
   min-height: 17px;
+  justify-content: start;
+  gap: 4px;
+  padding-inline: 5px;
   color: var(--skin-button-ink);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0 16%, transparent 16% 44%, rgba(0, 0, 0, 0.18) 44% 100%),
     linear-gradient(var(--skin-button-top), var(--skin-button-mid) 44%, var(--skin-button-bottom) 45% 100%);
 }
 
-.winamp-mode-buttons button[data-active="true"] {
+.winamp-controls .winamp-led-button[data-active="true"] {
   color: #05070c;
   text-shadow: none;
 }
@@ -2456,7 +2451,7 @@ h1 {
   }
 
   .winamp-player-body {
-    grid-template-columns: 22px 88px minmax(0, 1fr);
+    grid-template-columns: 22px minmax(112px, 0.44fr) minmax(0, 1fr);
     gap: 8px;
     padding: 10px 10px 5px;
   }
@@ -2509,8 +2504,12 @@ h1 {
     grid-template-columns: repeat(5, 1fr);
   }
 
-  .winamp-controls button,
-  .winamp-mode-buttons button {
+  .winamp-controls .winamp-led-button {
+    grid-column: span 2;
+    justify-content: center;
+  }
+
+  .winamp-controls button {
     min-height: 38px;
   }
 

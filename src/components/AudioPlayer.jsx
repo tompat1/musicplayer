@@ -575,17 +575,14 @@ function WinampMiniPlayer({
             <button type="button" onClick={onNext} title="Next track">
               <WinampTransportIcon type="next" />
             </button>
+            <WinampLedButton active={shuffle} onClick={onToggleShuffle}>SHUFFLE</WinampLedButton>
+            <WinampLedButton active={repeat} onClick={onToggleRepeat}>REPEAT</WinampLedButton>
           </div>
 
           <div className="winamp-volume">
             <span>VOL</span>
             <Slider label="Miniplayer volume" value={volume} onChange={onVolumeChange} />
             <strong>{Math.round(volume * 100)}</strong>
-          </div>
-
-          <div className="winamp-mode-buttons">
-            <WinampLedButton active={shuffle} onClick={onToggleShuffle}>SHUFFLE</WinampLedButton>
-            <WinampLedButton active={repeat} onClick={onToggleRepeat}>REPEAT</WinampLedButton>
           </div>
         </div>
       </section>
