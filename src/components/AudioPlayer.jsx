@@ -331,6 +331,7 @@ function WinampMiniPlayer({
   onTitlePointerMove,
   onTitlePointerUp,
   playerRef,
+  canOpenFullPlayer,
 }) {
   const style = position ? { left: position.x, top: position.y } : undefined;
 
@@ -344,7 +345,7 @@ function WinampMiniPlayer({
         onPointerUp={onTitlePointerUp}
       >
         <span>MUSICPLAYER MINI</span>
-        <button type="button" onClick={onRestore} title="Open full-page player">FULL PAGE</button>
+        {canOpenFullPlayer && <button type="button" onClick={onRestore} title="Open full-page player">FULL PAGE</button>}
       </div>
 
       <div className="winamp-lcd">
@@ -546,6 +547,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
   const [visualMode, setVisualMode] = useState('candy');
+  const [isMobile, setIsMobile] = useState(false);
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -557,6 +559,22 @@ export default function AudioPlayer({ tracks = [] }) {
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
   }, [trackIndex, tracks.length]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 760px)');
+    const syncMobileMode = () => {
+      const matches = mediaQuery.matches;
+      setIsMobile(matches);
+      if (matches) {
+        setIsMinimized(true);
+        setDocked(null);
+      }
+    };
+
+    syncMobileMode();
+    mediaQuery.addEventListener('change', syncMobileMode);
+    return () => mediaQuery.removeEventListener('change', syncMobileMode);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -689,6 +707,7 @@ export default function AudioPlayer({ tracks = [] }) {
   };
 
   const restoreFullPlayer = () => {
+    if (isMobile) return;
     setIsMinimized(false);
     setDocked(null);
   };
@@ -799,6 +818,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onTitlePointerMove={onMiniTitlePointerMove}
               onTitlePointerUp={onMiniTitlePointerUp}
               playerRef={miniRef}
+              canOpenFullPlayer={!isMobile}
             />
           )}
         </>
@@ -814,8 +834,14 @@ export default function AudioPlayer({ tracks = [] }) {
           <div className="deck-stats" aria-label="Catalog summary">
             <span>{tracks.length} tracks</span>
             <span>{new Set(tracks.map((track) => track.format).filter(Boolean)).size || 0} formats</span>
-            <button className="mini-return-button" type="button" onClick={minimize}>Return to Mini Player</button>
           </div>
+        </div>
+
+        <div className="full-player-actions">
+          <button type="button" onClick={minimize}>
+            <span>Mini Player</span>
+            <strong>Return to Floating Winamp Mini</strong>
+          </button>
         </div>
 
         <div className="now-playing-grid">
@@ -860,10 +886,6 @@ export default function AudioPlayer({ tracks = [] }) {
               <button type="button" onClick={next} disabled={!hasTracks} title="Next track">
                 NEXT
               </button>
-            </div>
-
-            <div className="full-player-actions">
-              <button type="button" onClick={minimize}>Return to Floating Mini Player</button>
             </div>
 
             <div className="utility-row">
