@@ -1972,7 +1972,7 @@ h1 {
 
 .winamp-slider-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   align-items: center;
 }
@@ -1994,7 +1994,7 @@ h1 {
 }
 
 .winamp-slider-control:last-child {
-  grid-template-columns: 24px minmax(0, 1fr) max-content;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
 }
 
 .winamp-slider-control .slider-track {
@@ -2449,8 +2449,8 @@ h1 {
   }
 
   .winamp-slider-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
   }
 
   .winamp-slider-control {
@@ -2458,7 +2458,7 @@ h1 {
   }
 
   .winamp-slider-control:last-child {
-    grid-template-columns: 34px minmax(0, 1fr) 36px;
+    grid-template-columns: 34px minmax(0, 1fr) 28px;
   }
 
   .winamp-slider-control .slider-field {
@@ -2472,6 +2472,13 @@ h1 {
   .winamp-slider-control .slider-thumb {
     width: 28px;
     height: 28px;
+  }
+
+  @media (max-width: 420px) {
+    .winamp-slider-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
   }
 
   .winamp-bottom-row {
