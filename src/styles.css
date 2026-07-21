@@ -290,6 +290,27 @@ h1 {
   animation: wave-drift calc(2.2s + var(--wave) * 0.18s) ease-in-out infinite alternate;
 }
 
+.visual-mode[data-visual-mode="bars"] .visual-wave,
+.visual-mode[data-visual-mode="wave"] .visual-prism,
+.visual-mode[data-visual-mode="idle"] .visual-wave {
+  opacity: 0.16;
+}
+
+.visual-mode[data-visual-mode="bars"] .visual-prism {
+  opacity: 0.36;
+  filter: blur(28px) saturate(1.1);
+}
+
+.visual-mode[data-visual-mode="wave"] .visual-wave {
+  height: 12%;
+  opacity: 0.72;
+}
+
+.visual-mode[data-visual-mode="idle"] .visual-prism {
+  opacity: 0.18;
+  animation-duration: 18s;
+}
+
 .visual-prism {
   position: absolute;
   inset: 6%;
@@ -664,6 +685,32 @@ h1 {
   border-color: rgba(0, 255, 65, 0.34);
 }
 
+.winamp-volume {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+  padding: 0 10px 9px;
+  color: #84ff9f;
+  font: 900 0.58rem/1 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.winamp-volume .slider-track {
+  height: 9px;
+}
+
+.winamp-volume .slider-thumb {
+  width: 12px;
+  height: 12px;
+}
+
+.winamp-volume strong {
+  justify-self: end;
+  color: rgba(132, 255, 159, 0.72);
+  font: inherit;
+}
+
 .winamp-drawer {
   overflow: hidden;
   border-top: 1px solid rgba(0, 255, 65, 0.12);
@@ -685,6 +732,43 @@ h1 {
   font: 900 0.6rem/1 var(--mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.winamp-vis-row {
+  display: grid;
+  grid-template-columns: 30px repeat(4, 1fr);
+  gap: 4px;
+  align-items: center;
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.winamp-vis-row span {
+  color: var(--acid);
+  font: 900 0.58rem/1 var(--mono);
+  letter-spacing: 0.1em;
+}
+
+.winamp-vis-row button {
+  min-height: 24px;
+  padding: 4px 3px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 255, 65, 0.16);
+  border-radius: 2px;
+  color: rgba(132, 255, 159, 0.62);
+  background: rgba(0, 0, 0, 0.24);
+  font: 900 0.48rem/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.winamp-vis-row button[data-active="true"] {
+  border-color: rgba(214, 255, 54, 0.58);
+  color: var(--acid);
+  background:
+    linear-gradient(135deg, rgba(214, 255, 54, 0.16), rgba(88, 215, 255, 0.08)),
+    rgba(0, 0, 0, 0.22);
+  box-shadow: 0 0 10px rgba(214, 255, 54, 0.18);
 }
 
 .winamp-songlist {

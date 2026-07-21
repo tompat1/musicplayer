@@ -113,7 +113,7 @@ function CoverArt({ track, playing }) {
   );
 }
 
-function SyncedCanvasVisualizer({ audioRef, playing }) {
+function SyncedCanvasVisualizer({ audioRef, playing, visualMode }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -127,7 +127,7 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
     let frameId = 0;
     let graph = audioGraphs.get(audio);
 
-    const drawFallback = (time = 0) => {
+    const drawIdle = (time = 0) => {
       const width = canvas.width;
       const height = canvas.height;
       context.clearRect(0, 0, width, height);
@@ -141,6 +141,36 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
         context.fillStyle = `hsla(${118 + i * 7}, 100%, ${54 + wave * 18}%, ${0.32 + wave * 0.34})`;
         context.fillRect(x, height - barHeight, width / 52, barHeight);
       }
+    };
+
+    const drawWave = (width, height) => {
+      const centerY = height * 0.52;
+      context.lineWidth = 6;
+      const lineGradient = context.createLinearGradient(0, 0, width, 0);
+      lineGradient.addColorStop(0, '#00ff41');
+      lineGradient.addColorStop(0.45, '#d6ff36');
+      lineGradient.addColorStop(0.72, '#ff335c');
+      lineGradient.addColorStop(1, '#58d7ff');
+      context.strokeStyle = lineGradient;
+      context.beginPath();
+      timeData.forEach((value, index) => {
+        const x = (index / (timeData.length - 1)) * width;
+        const y = centerY + ((value - 128) / 128) * height * 0.32;
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.stroke();
+    };
+
+    const drawBars = (width, height, alphaBoost = 0) => {
+      frequencyData.forEach((value, index) => {
+        const barWidth = width / frequencyData.length;
+        const normalized = value / 255;
+        const barHeight = Math.max(8, normalized * height * 0.66);
+        const hue = 112 + normalized * 210 + index * 0.9;
+        context.fillStyle = `hsla(${hue}, 100%, ${52 + normalized * 22}%, ${0.22 + normalized * 0.58 + alphaBoost})`;
+        context.fillRect(index * barWidth, height - barHeight, Math.max(2, barWidth - 2), barHeight);
+      });
     };
 
     const ensureGraph = async () => {
@@ -173,7 +203,7 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
       const height = canvas.height;
 
       if (!activeGraph) {
-        drawFallback(performance.now());
+        drawIdle(performance.now());
         frameId = requestAnimationFrame(draw);
         return;
       }
@@ -184,31 +214,16 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
       context.fillStyle = 'rgba(0, 0, 0, 0.14)';
       context.fillRect(0, 0, width, height);
 
-      const centerY = height * 0.52;
-      context.lineWidth = 5;
-      const lineGradient = context.createLinearGradient(0, 0, width, 0);
-      lineGradient.addColorStop(0, '#00ff41');
-      lineGradient.addColorStop(0.38, '#d6ff36');
-      lineGradient.addColorStop(0.68, '#ff335c');
-      lineGradient.addColorStop(1, '#58d7ff');
-      context.strokeStyle = lineGradient;
-      context.beginPath();
-      timeData.forEach((value, index) => {
-        const x = (index / (timeData.length - 1)) * width;
-        const y = centerY + ((value - 128) / 128) * height * 0.28;
-        if (index === 0) context.moveTo(x, y);
-        else context.lineTo(x, y);
-      });
-      context.stroke();
-
-      frequencyData.forEach((value, index) => {
-        const barWidth = width / frequencyData.length;
-        const normalized = value / 255;
-        const barHeight = Math.max(8, normalized * height * 0.56);
-        const hue = 112 + normalized * 210 + index * 0.9;
-        context.fillStyle = `hsla(${hue}, 100%, ${52 + normalized * 22}%, ${0.22 + normalized * 0.58})`;
-        context.fillRect(index * barWidth, height - barHeight, Math.max(2, barWidth - 2), barHeight);
-      });
+      if (visualMode === 'idle') {
+        drawIdle(performance.now());
+      } else if (visualMode === 'bars') {
+        drawBars(width, height, 0.08);
+      } else if (visualMode === 'wave') {
+        drawWave(width, height);
+      } else {
+        drawWave(width, height);
+        drawBars(width, height);
+      }
 
       frameId = requestAnimationFrame(draw);
     };
@@ -221,7 +236,7 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
 
     const stop = () => {
       cancelAnimationFrame(frameId);
-      drawFallback(performance.now());
+      drawIdle(performance.now());
     };
 
     audio.addEventListener('play', start);
@@ -237,7 +252,7 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
       audio.removeEventListener('pause', stop);
       audio.removeEventListener('ended', stop);
     };
-  }, [audioRef, playing]);
+  }, [audioRef, playing, visualMode]);
 
   return (
     <div className="synced-visualizers" aria-hidden="true">
@@ -246,9 +261,9 @@ function SyncedCanvasVisualizer({ audioRef, playing }) {
   );
 }
 
-function VisualMode({ track, playing, audioRef }) {
+function VisualMode({ track, playing, audioRef, visualMode }) {
   return (
-    <section className="visual-mode" data-playing={playing} aria-label="Minimized music visualizer">
+    <section className="visual-mode" data-playing={playing} data-visual-mode={visualMode} aria-label="Minimized music visualizer">
       <div className="visual-field" aria-hidden="true">
         {Array.from({ length: 9 }, (_, index) => (
           <span className="visual-wave" key={index} style={{ '--wave': index }} />
@@ -256,12 +271,12 @@ function VisualMode({ track, playing, audioRef }) {
         <div className="visual-prism" />
         <div className="visual-grid" />
       </div>
-      <SyncedCanvasVisualizer audioRef={audioRef} playing={playing} />
+      <SyncedCanvasVisualizer audioRef={audioRef} playing={playing} visualMode={visualMode} />
 
       <div className="visual-title">
         <p className="eyebrow">Miniplayer visual mode</p>
         <h1>{track?.title || 'Musicplayer'}</h1>
-        <p>{playing ? 'Color field locked to playback' : 'Ready for signal'}</p>
+        <p>{playing ? `${visualMode} visual locked to playback` : 'Ready for signal'}</p>
       </div>
     </section>
   );
@@ -297,7 +312,10 @@ function WinampMiniPlayer({
   dragging,
   playlistOpen,
   durations,
+  volume,
+  visualMode,
   onSeek,
+  onVolumeChange,
   onToggle,
   onStop,
   onPrevious,
@@ -305,6 +323,7 @@ function WinampMiniPlayer({
   onRestore,
   onSelect,
   onTogglePlaylist,
+  onVisualModeChange,
   onTitlePointerDown,
   onTitlePointerMove,
   onTitlePointerUp,
@@ -353,11 +372,31 @@ function WinampMiniPlayer({
         <button type="button" onClick={onNext} title="Next track">NEXT</button>
       </div>
 
+      <div className="winamp-volume">
+        <span>VOL</span>
+        <Slider label="Miniplayer volume" value={volume} onChange={onVolumeChange} />
+        <strong>{Math.round(volume * 100)}</strong>
+      </div>
+
       <div className="winamp-drawer">
         <button className="winamp-drawer-toggle" type="button" onClick={onTogglePlaylist} aria-expanded={playlistOpen}>
           <span>Playlist ({tracks.length})</span>
           <span>{playlistOpen ? 'Hide' : 'Show'}</span>
         </button>
+
+        <div className="winamp-vis-row" aria-label="Visualizer mode">
+          <span>VIS</span>
+          {['candy', 'bars', 'wave', 'idle'].map((mode) => (
+            <button
+              type="button"
+              key={mode}
+              data-active={visualMode === mode}
+              onClick={() => onVisualModeChange(mode)}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
 
         {playlistOpen && (
           <div className="winamp-songlist" role="list">
@@ -503,6 +542,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const [docked, setDocked] = useState(null);
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
+  const [visualMode, setVisualMode] = useState('candy');
 
   const audioRef = useRef(null);
   const miniRef = useRef(null);
@@ -717,7 +757,7 @@ export default function AudioPlayer({ tracks = [] }) {
 
       {isMinimized ? (
         <>
-          <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} />
+          <VisualMode track={currentTrack} playing={isPlaying} audioRef={audioRef} visualMode={visualMode} />
           {docked ? (
             <DockedMiniHandle
               side={docked}
@@ -739,7 +779,10 @@ export default function AudioPlayer({ tracks = [] }) {
               dragging={isDraggingMini}
               playlistOpen={miniPlaylistOpen}
               durations={durations}
+              volume={volume}
+              visualMode={visualMode}
               onSeek={seek}
+              onVolumeChange={setVolume}
               onToggle={togglePlay}
               onStop={stop}
               onPrevious={previous}
@@ -747,6 +790,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}
+              onVisualModeChange={setVisualMode}
               onTitlePointerDown={onMiniTitlePointerDown}
               onTitlePointerMove={onMiniTitlePointerMove}
               onTitlePointerUp={onMiniTitlePointerUp}
