@@ -1,15 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Mixed3 } from 'waviz';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const SNAP_PX = 80;
-
-const ReactAudioSpectrum = lazy(() =>
-  import('react-audio-visualizers').then((module) => ({
-    default: function ReactAudioSpectrumLayer(props) {
-      return <module.SpectrumVisualizer {...props} theme={module.SpectrumVisualizerTheme.radialSquaredBars} />;
-    },
-  })),
-);
+const audioGraphs = new WeakMap();
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -121,32 +113,135 @@ function CoverArt({ track, playing }) {
   );
 }
 
-function VisualizerStack({ track, audioRef }) {
-  const wavizCanvasRef = useRef(null);
+function SyncedCanvasVisualizer({ audioRef, playing }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    const canvas = canvasRef.current;
+    if (!audio || !canvas) return undefined;
+
+    const context = canvas.getContext('2d');
+    const frequencyData = new Uint8Array(128);
+    const timeData = new Uint8Array(128);
+    let frameId = 0;
+    let graph = audioGraphs.get(audio);
+
+    const drawFallback = (time = 0) => {
+      const width = canvas.width;
+      const height = canvas.height;
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      context.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < 42; i += 1) {
+        const x = (i / 41) * width;
+        const wave = Math.sin(time / 420 + i * 0.52) * 0.5 + 0.5;
+        const barHeight = (0.12 + wave * 0.76) * height;
+        context.fillStyle = `hsla(${118 + i * 7}, 100%, ${54 + wave * 18}%, ${0.32 + wave * 0.34})`;
+        context.fillRect(x, height - barHeight, width / 52, barHeight);
+      }
+    };
+
+    const ensureGraph = async () => {
+      if (graph) {
+        await graph.audioContext.resume();
+        return graph;
+      }
+
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContextClass();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.78;
+        const source = audioContext.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+        graph = { analyser, audioContext };
+        audioGraphs.set(audio, graph);
+        await audioContext.resume();
+        return graph;
+      } catch {
+        return null;
+      }
+    };
+
+    const draw = () => {
+      const activeGraph = graph;
+      const width = canvas.width;
+      const height = canvas.height;
+
+      if (!activeGraph) {
+        drawFallback(performance.now());
+        frameId = requestAnimationFrame(draw);
+        return;
+      }
+
+      activeGraph.analyser.getByteFrequencyData(frequencyData);
+      activeGraph.analyser.getByteTimeDomainData(timeData);
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      context.fillRect(0, 0, width, height);
+
+      const centerY = height * 0.52;
+      context.lineWidth = 5;
+      const lineGradient = context.createLinearGradient(0, 0, width, 0);
+      lineGradient.addColorStop(0, '#00ff41');
+      lineGradient.addColorStop(0.38, '#d6ff36');
+      lineGradient.addColorStop(0.68, '#ff335c');
+      lineGradient.addColorStop(1, '#58d7ff');
+      context.strokeStyle = lineGradient;
+      context.beginPath();
+      timeData.forEach((value, index) => {
+        const x = (index / (timeData.length - 1)) * width;
+        const y = centerY + ((value - 128) / 128) * height * 0.28;
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.stroke();
+
+      frequencyData.forEach((value, index) => {
+        const barWidth = width / frequencyData.length;
+        const normalized = value / 255;
+        const barHeight = Math.max(8, normalized * height * 0.56);
+        const hue = 112 + normalized * 210 + index * 0.9;
+        context.fillStyle = `hsla(${hue}, 100%, ${52 + normalized * 22}%, ${0.22 + normalized * 0.58})`;
+        context.fillRect(index * barWidth, height - barHeight, Math.max(2, barWidth - 2), barHeight);
+      });
+
+      frameId = requestAnimationFrame(draw);
+    };
+
+    const start = async () => {
+      graph = await ensureGraph();
+      cancelAnimationFrame(frameId);
+      draw();
+    };
+
+    const stop = () => {
+      cancelAnimationFrame(frameId);
+      drawFallback(performance.now());
+    };
+
+    audio.addEventListener('play', start);
+    audio.addEventListener('pause', stop);
+    audio.addEventListener('ended', stop);
+
+    if (!audio.paused || playing) start();
+    else stop();
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      audio.removeEventListener('play', start);
+      audio.removeEventListener('pause', stop);
+      audio.removeEventListener('ended', stop);
+    };
+  }, [audioRef, playing]);
 
   return (
     <div className="synced-visualizers" aria-hidden="true">
-      <canvas className="waviz-canvas" ref={wavizCanvasRef} width="1200" height="720" />
-      <Mixed3 srcAudio={audioRef} srcCanvas={wavizCanvasRef} />
-      {track?.src && (
-        <div className="rav-spectrum">
-          <Suspense fallback={null}>
-            <ReactAudioSpectrum
-              audio={track.src}
-              colors={['#00ff41', '#d6ff36', '#ff335c', '#58d7ff']}
-              backgroundColor="transparent"
-              iconsColor="#d6ff36"
-              showMainActionIcon={false}
-              showLoaderIcon={false}
-              highFrequency={9000}
-              numBars={80}
-              radius={96}
-              barWidth={3}
-              mirror
-            />
-          </Suspense>
-        </div>
-      )}
+      <canvas className="waviz-canvas" ref={canvasRef} width="1200" height="720" />
     </div>
   );
 }
@@ -161,7 +256,7 @@ function VisualMode({ track, playing, audioRef }) {
         <div className="visual-prism" />
         <div className="visual-grid" />
       </div>
-      <VisualizerStack track={track} audioRef={audioRef} />
+      <SyncedCanvasVisualizer audioRef={audioRef} playing={playing} />
 
       <div className="visual-title">
         <p className="eyebrow">Miniplayer visual mode</p>

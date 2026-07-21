@@ -14,7 +14,6 @@
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",
     "react": "^19.2.7",
-    "react-audio-visualizers": "^0.1.1",
     "react-dom": "^19.2.7",
     "vite": "^8.1.0",
     "waviz": "^1.0.0"

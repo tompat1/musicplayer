@@ -321,10 +321,6 @@ h1 {
   pointer-events: none;
 }
 
-.synced-visualizers > div:not(.rav-spectrum) {
-  display: none;
-}
-
 .waviz-canvas {
   position: absolute;
   inset: 0;
@@ -333,23 +329,6 @@ h1 {
   opacity: 0.72;
   mix-blend-mode: screen;
   filter: saturate(1.5) contrast(1.12);
-}
-
-.rav-spectrum {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(72vw, 820px);
-  height: min(72vw, 820px);
-  opacity: 0.32;
-  mix-blend-mode: screen;
-  transform: translate(-50%, -50%);
-  filter: blur(0.2px) saturate(1.3);
-}
-
-.rav-spectrum > div {
-  width: 100%;
-  height: 100%;
 }
 
 .visual-title {
