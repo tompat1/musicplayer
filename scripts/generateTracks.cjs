@@ -34,6 +34,15 @@ function titleCase(value) {
   return value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
+function displayTitleFromFileName(fileName) {
+  const rawName = fileName.replace(audioPattern, '');
+  return rawName
+    .replace(/\s+by\s+/i, ' by ')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || rawName;
+}
+
 function extractMetadata(fileName) {
   const extension = path.extname(fileName).slice(1).toUpperCase();
   const rawName = fileName.replace(audioPattern, '');
@@ -53,6 +62,7 @@ function extractMetadata(fileName) {
 
   return {
     title: titleCase(workingName || rawName),
+    displayTitle: displayTitleFromFileName(fileName),
     artist,
     mix: version,
     version,

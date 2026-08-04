@@ -29,6 +29,20 @@ const getPlaylistDuration = (track, index, durations, currentIndex, liveDuration
   return '--:--';
 };
 
+const getLibraryTitle = (track) => {
+  if (track?.displayTitle) return track.displayTitle;
+  const mix = track?.mix || track?.version;
+  const titleParts = [track?.title, mix && `(${mix})`, track?.artist && `by ${track.artist}`].filter(Boolean);
+  return titleParts.join(' ');
+};
+
+const getTrackTitle = (track) => getLibraryTitle(track) || track?.title || 'No Tracks Loaded';
+
+const getLibraryDetails = (track) => {
+  const source = track?.source === 'google-flow' ? 'Google Flow' : track?.filename;
+  return [source, track?.key, track?.bpm && `${track.bpm} BPM`].filter(Boolean).join(' / ');
+};
+
 const isKeyboardControlTarget = (target) => {
   if (!(target instanceof Element)) return false;
   return Boolean(
@@ -202,13 +216,15 @@ function Equalizer({ playing }) {
 }
 
 function CoverArt({ track, playing }) {
+  const title = getTrackTitle(track);
+
   return (
     <div className="cover-stage" data-playing={playing}>
       {track?.cover ? (
-        <img src={track.cover} alt={`${track.title} cover art`} />
+        <img src={track.cover} alt={`${title} cover art`} />
       ) : (
-        <div className="generated-cover" aria-label={`${track?.title || 'No track'} cover fallback`}>
-          <span>{track?.title?.slice(0, 2).toUpperCase() || 'MP'}</span>
+        <div className="generated-cover" aria-label={`${title} cover fallback`}>
+          <span>{title.slice(0, 2).toUpperCase() || 'MP'}</span>
         </div>
       )}
       <div className="cover-ring" aria-hidden="true" />
@@ -341,6 +357,8 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnab
 }
 
 function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }) {
+  const title = getTrackTitle(track);
+
   return (
     <section className="visual-mode" data-playing={playing} data-visual-mode={visualMode} aria-label="Minimized music visualizer">
       <div className="visual-field" aria-hidden="true">
@@ -360,7 +378,7 @@ function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }
 
       <div className="visual-title">
         <p className="eyebrow">Rynell Player visual mode</p>
-        <h1>{track?.title || 'Musicplayer'}</h1>
+        <h1>{title || 'Musicplayer'}</h1>
         <p>{playing ? `${visualMode} visual locked to playback` : 'Ready for signal'}</p>
       </div>
     </section>
@@ -553,7 +571,7 @@ function WinampMiniPlayer({
 
           <div className="winamp-track-display">
             <div className="winamp-marquee">
-              <span data-playing={playing}>{(track?.title || 'No Tracks Loaded').toUpperCase()}</span>
+              <span data-playing={playing}>{getTrackTitle(track).toUpperCase()}</span>
             </div>
             <div className="winamp-tech-row">
               <span>{bitrate} kbps</span>
@@ -675,7 +693,7 @@ function WinampMiniPlayer({
                   onClick={() => onSelect(index)}
                 >
                   <span>{`${index + 1}.`}</span>
-                  <strong>{playlistTrack.title}</strong>
+                  <strong>{getTrackTitle(playlistTrack)}</strong>
                   <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
                 </button>
               );
@@ -768,11 +786,11 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
               >
                 <span className="track-number">{isActive && playing ? 'PLAY' : String(index + 1).padStart(2, '0')}</span>
                 <span className="track-thumb">
-                  {track.cover ? <img src={track.cover} alt="" /> : <span>{track.title.slice(0, 1)}</span>}
+                  {track.cover ? <img src={track.cover} alt="" /> : <span>{getTrackTitle(track).slice(0, 1)}</span>}
                 </span>
                 <span className="track-main">
-                  <strong>{track.title}</strong>
-                  <small>{[track.mix || track.version, track.source === 'google-flow' ? 'Google Flow' : track.filename].filter(Boolean).join(' / ')}</small>
+                  <strong>{getTrackTitle(track)}</strong>
+                  <small>{getLibraryDetails(track)}</small>
                 </span>
                 <span className="track-tags">
                   {track.source === 'google-flow' && <span>FLOW</span>}
@@ -1272,7 +1290,7 @@ export default function AudioPlayer({ tracks = [] }) {
             </div>
 
             <div className="title-stack">
-              <h2>{currentTrack?.title || 'No Tracks Loaded'}</h2>
+              <h2>{getTrackTitle(currentTrack)}</h2>
               <p>{currentTrack?.artist || currentTrack?.filename || 'Add audio files to the catalog.'}</p>
             </div>
 

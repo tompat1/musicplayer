@@ -1377,8 +1377,6 @@ h1 {
 .track-main small {
   display: block;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .track-main strong {
@@ -1386,11 +1384,15 @@ h1 {
   color: var(--text);
   font-size: 0.96rem;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .track-main small {
   color: var(--dim);
   font-size: 0.78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .track-tags {
