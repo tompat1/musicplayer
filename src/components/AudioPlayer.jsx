@@ -4,6 +4,14 @@ const SNAP_PX = 80;
 const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const BUILT_IN_EQ_PRESETS = {
+  'Bass Boost': [8, 7, 5, 2, 0, -1, -2, -2, -1, 0],
+  Electronica: [6, 5, 2, 0, -2, 3, 5, 6, 5, 4],
+  Disco: [5, 4, 1, -2, -1, 2, 4, 5, 4, 3],
+  Rock: [6, 4, 2, -1, -2, 2, 4, 5, 4, 3],
+  Classical: [0, 0, 0, 1, 2, 2, 1, 1, 2, 3],
+  Classic: [4, 3, 2, 1, 0, 1, 2, 3, 3, 2],
+};
 const EQ_GAIN_MULTIPLIER = 1.75;
 const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
 const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
@@ -644,6 +652,10 @@ function WinampMiniPlayer({
             aria-label="Load EQ preset"
           >
             <option value="">PRESET</option>
+            {Object.keys(BUILT_IN_EQ_PRESETS).map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+            {Object.keys(eqPresets).length > 0 && <option value="" disabled>-- SAVED --</option>}
             {Object.keys(eqPresets).map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -1191,7 +1203,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, []);
 
   const loadEqPreset = useCallback((name) => {
-    const preset = eqPresets[name];
+    const preset = BUILT_IN_EQ_PRESETS[name] || eqPresets[name];
     if (Array.isArray(preset) && preset.length === EQ_BANDS.length) {
       setEqGains(preset.map((gain) => clamp(Number(gain) || 0, -15, 15)));
       setEqEnabled(true);
