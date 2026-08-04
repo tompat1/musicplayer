@@ -7,7 +7,7 @@ const outputJson = path.join(__dirname, '../src/audioData.json');
 const overridesJson = path.join(__dirname, '../src/catalogOverrides.json');
 const flowCatalogJson = path.join(__dirname, '../src/flowCatalog.json');
 
-const audioPattern = /\.(mp3|ogg|wav|flac|aac|m4a)$/i;
+const audioPattern = /\.(mp3|ogg|wav|flac|aac|m4a|mp4)$/i;
 const coverPattern = /\.(jpg|jpeg|png|webp|avif)$/i;
 
 function readJson(filePath, fallback) {
