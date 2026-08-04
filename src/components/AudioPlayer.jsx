@@ -537,6 +537,7 @@ function WinampMiniPlayer({
   eqGains,
   eqPanelOpen,
   eqPresets,
+  activeEqPreset,
   audioRef,
   onSeek,
   onVolumeChange,
@@ -667,10 +668,9 @@ function WinampMiniPlayer({
           <WinampLedButton active={eqPanelOpen} onClick={onToggleEqPanel}>EQ</WinampLedButton>
           <select
             className="winamp-preset-select"
-            defaultValue=""
+            value={activeEqPreset}
             onChange={(event) => {
               if (event.target.value) onEqPresetLoad(event.target.value);
-              event.target.value = '';
             }}
             aria-label="Load EQ preset"
           >
@@ -944,6 +944,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
   const [eqPanelOpen, setEqPanelOpen] = useState(true);
+  const [activeEqPreset, setActiveEqPreset] = useState('');
   const [customTitles, setCustomTitles] = useState(() => readLocalStorageJson(CUSTOM_TITLES_STORAGE_KEY, {}));
   const [deletedTracks, setDeletedTracks] = useState(() => readLocalStorageJson(DELETED_TRACKS_STORAGE_KEY, []));
   const [eqPresets, setEqPresets] = useState(() => {
@@ -1220,6 +1221,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [tracks.length]);
 
   const setEqGain = useCallback((index, gain) => {
+    setActiveEqPreset('');
     setEqGains((currentGains) => currentGains.map((currentGain, gainIndex) => (
       gainIndex === index ? clamp(gain, -15, 15) : currentGain
     )));
@@ -1229,6 +1231,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     const preset = BUILT_IN_EQ_PRESETS[name] || eqPresets[name];
     if (Array.isArray(preset) && preset.length === EQ_BANDS.length) {
       setEqGains(preset.map((gain) => clamp(Number(gain) || 0, -15, 15)));
+      setActiveEqPreset(name);
       setEqEnabled(true);
     }
   }, [eqPresets]);
@@ -1244,6 +1247,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         [name]: eqGains,
       };
       window.localStorage.setItem(EQ_PRESETS_STORAGE_KEY, JSON.stringify(nextPresets));
+      setActiveEqPreset(name);
       return nextPresets;
     });
   }, [eqGains, eqPresets]);
@@ -1430,6 +1434,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               eqGains={eqGains}
               eqPanelOpen={eqPanelOpen}
               eqPresets={eqPresets}
+              activeEqPreset={activeEqPreset}
               audioRef={audioRef}
               onSeek={seek}
               onVolumeChange={setVolume}
