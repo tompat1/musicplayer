@@ -29,6 +29,13 @@ const formatTime = (seconds) => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const parseDurationLabel = (label) => {
+  if (typeof label !== 'string') return 0;
+  const parts = label.split(':').map((part) => Number(part));
+  if (parts.some((part) => !Number.isFinite(part))) return 0;
+  return parts.reduce((total, part) => (total * 60) + part, 0);
+};
+
 const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
   return liveDuration ? formatTime(liveDuration) : '--:--';
@@ -170,11 +177,31 @@ function Slider({ label, value, onChange }) {
       className="slider-field"
       aria-label={label}
       onPointerDown={(event) => {
-        if (event.target !== event.currentTarget || !sliderRef.current) return;
-        sliderRef.current.setPointerCapture(event.pointerId);
+        if (!sliderRef.current) return;
+        event.currentTarget.setPointerCapture(event.pointerId);
         activePointerId.current = event.pointerId;
         event.preventDefault();
         updateValue(event);
+      }}
+      onPointerMove={(event) => {
+        event.preventDefault();
+        if (activePointerId.current === event.pointerId) updateValue(event);
+      }}
+      onPointerUp={(event) => {
+        if (activePointerId.current === event.pointerId) {
+          activePointerId.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }
+      }}
+      onPointerCancel={(event) => {
+        if (activePointerId.current === event.pointerId) {
+          activePointerId.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }
       }}
     >
       <div
@@ -186,32 +213,6 @@ function Slider({ label, value, onChange }) {
         aria-valuemax="100"
         aria-valuenow={Math.round(value * 100)}
         tabIndex="0"
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          activePointerId.current = event.pointerId;
-          event.preventDefault();
-          updateValue(event);
-        }}
-        onPointerMove={(event) => {
-          event.preventDefault();
-          if (activePointerId.current === event.pointerId) updateValue(event);
-        }}
-        onPointerUp={(event) => {
-          if (activePointerId.current === event.pointerId) {
-            activePointerId.current = null;
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              event.currentTarget.releasePointerCapture(event.pointerId);
-            }
-          }
-        }}
-        onPointerCancel={(event) => {
-          if (activePointerId.current === event.pointerId) {
-            activePointerId.current = null;
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              event.currentTarget.releasePointerCapture(event.pointerId);
-            }
-          }
-        }}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') {
             event.preventDefault();
@@ -1158,11 +1159,16 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const seek = useCallback((percent) => {
     const audio = audioRef.current;
-    if (!audio?.duration) return;
-    audio.currentTime = percent * audio.duration;
+    if (!audio) return;
+    const audioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const fallbackDuration = duration || parseDurationLabel(currentTrack?.duration);
+    const seekDuration = audioDuration || fallbackDuration;
+    if (!seekDuration) return;
+    const nextTime = percent * seekDuration;
+    audio.currentTime = nextTime;
     setProgress(percent);
-    setCurrentTime(percent * audio.duration);
-  }, []);
+    setCurrentTime(nextTime);
+  }, [currentTrack, duration]);
 
   const previous = useCallback(() => {
     if (!tracks.length) return;
