@@ -521,6 +521,7 @@ function WinampMiniPlayer({
   visualMode,
   shuffle,
   repeat,
+  lyricsOpen,
   eqEnabled,
   eqGains,
   eqPanelOpen,
@@ -534,6 +535,7 @@ function WinampMiniPlayer({
   onNext,
   onToggleShuffle,
   onToggleRepeat,
+  onToggleLyrics,
   onToggleEq,
   onToggleEqPanel,
   onEqGainChange,
@@ -621,6 +623,7 @@ function WinampMiniPlayer({
             </button>
             <WinampLedButton active={shuffle} onClick={onToggleShuffle}>SHUFFLE</WinampLedButton>
             <WinampLedButton active={repeat} onClick={onToggleRepeat}>REPEAT</WinampLedButton>
+            <WinampLedButton active={lyricsOpen} onClick={onToggleLyrics}>LYRICS</WinampLedButton>
           </div>
         </div>
       </section>
@@ -666,6 +669,8 @@ function WinampMiniPlayer({
           ))}
         </div>
       </section>
+
+      <LyricsPanel track={track} open={lyricsOpen} compact />
 
       <section className="winamp-panel winamp-playlist-panel" aria-label="Winamp playlist">
         <WinampWindowBar title="RYNELL PLAYLIST">
@@ -714,6 +719,37 @@ function WinampMiniPlayer({
         </div>
       </section>
     </aside>
+  );
+}
+
+function LyricsPanel({ track, open, compact = false }) {
+  if (!open) return null;
+
+  const lyrics = Array.isArray(track?.lyrics)
+    ? track.lyrics.join('\n')
+    : track?.lyrics || '';
+
+  return (
+    <section className={compact ? 'winamp-panel lyrics-panel is-compact' : 'lyrics-panel'} aria-label="Lyrics">
+      {compact ? (
+        <WinampWindowBar title="LYRICS">
+          <span className="lyrics-title">{getTrackTitle(track)}</span>
+        </WinampWindowBar>
+      ) : (
+        <div className="lyrics-header">
+          <p className="eyebrow">Lyrics</p>
+          <h3>{getTrackTitle(track)}</h3>
+        </div>
+      )}
+
+      <div className="lyrics-body">
+        {lyrics ? (
+          <pre>{lyrics}</pre>
+        ) : (
+          <p>No lyrics saved for this track.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -832,6 +868,7 @@ export default function AudioPlayer({ tracks = [] }) {
   const [docked, setDocked] = useState(null);
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
   const [visualMode, setVisualMode] = useState('candy');
   const [isMobile, setIsMobile] = useState(false);
   const [eqEnabled, setEqEnabled] = useState(true);
@@ -1267,6 +1304,7 @@ export default function AudioPlayer({ tracks = [] }) {
               visualMode={visualMode}
               shuffle={shuffle}
               repeat={repeat}
+              lyricsOpen={lyricsOpen}
               eqEnabled={eqEnabled}
               eqGains={eqGains}
               eqPanelOpen={eqPanelOpen}
@@ -1280,6 +1318,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onNext={next}
               onToggleShuffle={toggleShuffle}
               onToggleRepeat={() => setRepeat((value) => !value)}
+              onToggleLyrics={() => setLyricsOpen((value) => !value)}
               onToggleEq={() => setEqEnabled((value) => !value)}
               onToggleEqPanel={() => setEqPanelOpen((value) => !value)}
               onEqGainChange={setEqGain}
@@ -1370,6 +1409,9 @@ export default function AudioPlayer({ tracks = [] }) {
               <button type="button" onClick={() => setRepeat((value) => !value)} aria-pressed={repeat} data-active={repeat}>
                 Repeat
               </button>
+              <button type="button" onClick={() => setLyricsOpen((value) => !value)} aria-pressed={lyricsOpen} data-active={lyricsOpen}>
+                Lyrics
+              </button>
               <button type="button" onClick={() => setIsMuted((value) => !value)} aria-pressed={isMuted} data-active={isMuted}>
                 {isMuted ? 'Muted' : 'Mute'}
               </button>
@@ -1378,6 +1420,8 @@ export default function AudioPlayer({ tracks = [] }) {
                 <Slider label="Volume" value={volume} onChange={setVolume} />
               </div>
             </div>
+
+            <LyricsPanel track={currentTrack} open={lyricsOpen} />
           </div>
         </div>
       </section>
