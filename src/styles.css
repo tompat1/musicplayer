@@ -2530,6 +2530,31 @@ h1 {
   background: #d8c77a;
 }
 
+.winamp-song-row:hover .winamp-song-actions button {
+  border-color: rgba(240, 255, 216, 0.34);
+  color: #f0ffd8;
+  background: rgba(0, 255, 54, 0.08);
+}
+
+.winamp-song-row:hover .winamp-song-actions button[data-active="true"] {
+  border-color: rgba(216, 199, 122, 0.8);
+  color: #05070c;
+  background: #d8c77a;
+}
+
+.winamp-song-row[data-active="true"] .winamp-song-actions button {
+  border-color: rgba(2, 4, 3, 0.42);
+  color: #020403;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.winamp-song-row[data-active="true"] .winamp-song-actions button[data-active="true"] {
+  color: #00ff36;
+  background: #020403;
+  box-shadow: none;
+}
+
 .winamp-playlist-footer {
   display: flex;
   align-items: center;
