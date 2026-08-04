@@ -6,6 +6,8 @@ const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const EQ_GAIN_MULTIPLIER = 1.75;
 const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
+const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
+const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
 const playerBrand = 'RYNELL PLAYER';
 
 const formatTime = (seconds) => {
@@ -776,7 +778,27 @@ function TrackMeta({ track, liveDuration }) {
   );
 }
 
-function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelect, liveDuration, durations }) {
+function readLocalStorageJson(key, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    return JSON.parse(window.localStorage.getItem(key)) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function Playlist({
+  tracks,
+  currentIndex,
+  playing,
+  query,
+  onQueryChange,
+  onSelect,
+  onEditTitle,
+  onDeleteTrack,
+  liveDuration,
+  durations,
+}) {
   const filteredTracks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return tracks.map((track, index) => ({ track, index }));
@@ -820,28 +842,41 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
           filteredTracks.map(({ track, index }) => {
             const isActive = index === currentIndex;
             return (
-              <button
+              <div
                 className="track-row"
-                type="button"
                 key={track.filename}
-                onClick={() => onSelect(index)}
                 data-active={isActive}
-                aria-current={isActive ? 'true' : undefined}
+                role="listitem"
               >
-                <span className="track-number">{isActive && playing ? 'PLAY' : String(index + 1).padStart(2, '0')}</span>
-                <span className="track-thumb">
-                  {track.cover ? <img src={track.cover} alt="" /> : <span>{getTrackTitle(track).slice(0, 1)}</span>}
-                </span>
-                <span className="track-main">
-                  <strong>{getTrackTitle(track)}</strong>
-                  <small>{getLibraryDetails(track)}</small>
-                </span>
+                <button
+                  className="track-select"
+                  type="button"
+                  onClick={() => onSelect(index)}
+                  aria-current={isActive ? 'true' : undefined}
+                >
+                  <span className="track-number">{isActive && playing ? 'PLAY' : String(index + 1).padStart(2, '0')}</span>
+                  <span className="track-thumb">
+                    {track.cover ? <img src={track.cover} alt="" /> : <span>{getTrackTitle(track).slice(0, 1)}</span>}
+                  </span>
+                  <span className="track-main">
+                    <strong>{getTrackTitle(track)}</strong>
+                    <small>{getLibraryDetails(track)}</small>
+                  </span>
+                </button>
                 <span className="track-tags">
                   {track.source === 'google-flow' && <span>FLOW</span>}
                   <span>{track.format || 'AUDIO'}</span>
                   <span>{getPlaylistDuration(track, index, durations, currentIndex, liveDuration)}</span>
                 </span>
-              </button>
+                <span className="track-actions">
+                  <button type="button" onClick={() => onEditTitle(track)} title={`Edit title for ${getTrackTitle(track)}`}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => onDeleteTrack(track)} title={`Delete ${getTrackTitle(track)} from library`}>
+                    Delete
+                  </button>
+                </span>
+              </div>
             );
           })
         )}
@@ -850,7 +885,7 @@ function Playlist({ tracks, currentIndex, playing, query, onQueryChange, onSelec
   );
 }
 
-export default function AudioPlayer({ tracks = [] }) {
+export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [trackIndex, setTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -874,13 +909,10 @@ export default function AudioPlayer({ tracks = [] }) {
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
   const [eqPanelOpen, setEqPanelOpen] = useState(true);
+  const [customTitles, setCustomTitles] = useState(() => readLocalStorageJson(CUSTOM_TITLES_STORAGE_KEY, {}));
+  const [deletedTracks, setDeletedTracks] = useState(() => readLocalStorageJson(DELETED_TRACKS_STORAGE_KEY, []));
   const [eqPresets, setEqPresets] = useState(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(window.localStorage.getItem(EQ_PRESETS_STORAGE_KEY)) || {};
-    } catch {
-      return {};
-    }
+    return readLocalStorageJson(EQ_PRESETS_STORAGE_KEY, {});
   });
 
   const audioRef = useRef(null);
@@ -888,12 +920,28 @@ export default function AudioPlayer({ tracks = [] }) {
   const miniDragging = useRef(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
   const shuffleQueue = useRef([]);
+  const deletedTrackSet = useMemo(() => new Set(deletedTracks), [deletedTracks]);
+  const tracks = useMemo(() => (
+    catalogTracks
+      .filter((track) => !deletedTrackSet.has(track.filename))
+      .map((track) => {
+        const customTitle = customTitles[track.filename];
+        return customTitle ? { ...track, displayTitle: customTitle } : track;
+      })
+  ), [catalogTracks, customTitles, deletedTrackSet]);
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
 
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
   }, [trackIndex, tracks.length]);
+
+  useEffect(() => {
+    if (!tracks.length) {
+      setIsPlaying(false);
+      setTrackIndex(0);
+    }
+  }, [tracks.length]);
 
   useEffect(() => {
     shuffleQueue.current = shuffleQueue.current.filter((index) => index < tracks.length && index !== trackIndex);
@@ -1097,6 +1145,44 @@ export default function AudioPlayer({ tracks = [] }) {
     setTrackIndex(index);
     setIsPlaying(true);
   };
+
+  const editTrackTitle = useCallback((track) => {
+    if (!track?.filename) return;
+    const currentTitle = getTrackTitle(track);
+    const nextTitle = window.prompt('Edit track title:', currentTitle)?.trim();
+    if (!nextTitle) return;
+
+    setCustomTitles((currentTitles) => {
+      const nextTitles = { ...currentTitles };
+      if (nextTitle === track.displayTitle || nextTitle === track.title) delete nextTitles[track.filename];
+      else nextTitles[track.filename] = nextTitle;
+      window.localStorage.setItem(CUSTOM_TITLES_STORAGE_KEY, JSON.stringify(nextTitles));
+      return nextTitles;
+    });
+  }, []);
+
+  const deleteTrack = useCallback((track) => {
+    if (!track?.filename) return;
+    const title = getTrackTitle(track);
+    if (!window.confirm(`Delete "${title}" from this library? The audio file will stay in the assets folder.`)) return;
+
+    setDeletedTracks((currentDeletedTracks) => {
+      if (currentDeletedTracks.includes(track.filename)) return currentDeletedTracks;
+      const nextDeletedTracks = [...currentDeletedTracks, track.filename];
+      window.localStorage.setItem(DELETED_TRACKS_STORAGE_KEY, JSON.stringify(nextDeletedTracks));
+      return nextDeletedTracks;
+    });
+
+    setCustomTitles((currentTitles) => {
+      if (!currentTitles[track.filename]) return currentTitles;
+      const nextTitles = { ...currentTitles };
+      delete nextTitles[track.filename];
+      window.localStorage.setItem(CUSTOM_TITLES_STORAGE_KEY, JSON.stringify(nextTitles));
+      return nextTitles;
+    });
+
+    setTrackIndex((index) => clamp(index, 0, Math.max(0, tracks.length - 2)));
+  }, [tracks.length]);
 
   const setEqGain = useCallback((index, gain) => {
     setEqGains((currentGains) => currentGains.map((currentGain, gainIndex) => (
@@ -1433,6 +1519,8 @@ export default function AudioPlayer({ tracks = [] }) {
         query={query}
         onQueryChange={setQuery}
         onSelect={selectTrack}
+        onEditTitle={editTrackTitle}
+        onDeleteTrack={deleteTrack}
         liveDuration={duration}
         durations={durations}
       />

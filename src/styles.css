@@ -1171,7 +1171,7 @@ h1 {
 
 .transport-row button:hover:not(:disabled),
 .utility-row button:hover,
-.track-row:hover {
+.track-row:hover .track-select {
   border-color: rgba(214, 255, 54, 0.58);
   color: var(--acid);
   transform: translateY(-1px);
@@ -1322,25 +1322,39 @@ h1 {
 
 .track-row {
   display: grid;
-  grid-template-columns: 46px 48px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: center;
   width: 100%;
   min-height: 78px;
   padding: 12px 16px;
-  cursor: pointer;
   border: 0;
   border-bottom: 1px solid var(--line-soft);
   border-left: 3px solid transparent;
   color: inherit;
   background: transparent;
   text-align: left;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease;
 }
 
 .track-row[data-active="true"] {
   border-left-color: var(--green);
   background: rgba(0, 255, 65, 0.08);
+}
+
+.track-select {
+  display: grid;
+  grid-template-columns: 46px 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  min-height: 54px;
+  padding: 0;
+  cursor: pointer;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
 }
 
 .track-number {
@@ -1404,6 +1418,33 @@ h1 {
 .track-tags span {
   padding: 6px 7px;
   font-size: 0.62rem;
+}
+
+.track-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.track-actions button {
+  min-height: 28px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 255, 65, 0.18);
+  border-radius: 3px;
+  color: var(--green);
+  background: rgba(0, 0, 0, 0.22);
+  font: 800 0.58rem/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.track-actions button:last-child {
+  border-color: rgba(255, 51, 92, 0.28);
+  color: #ff8aa0;
+}
+
+.track-actions button:hover {
+  border-color: rgba(214, 255, 54, 0.58);
+  color: var(--acid);
 }
 
 .empty-state {
@@ -1672,14 +1713,23 @@ h1 {
   }
 
   .track-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .track-select {
     grid-template-columns: 34px 42px minmax(0, 1fr);
   }
 
   .track-tags {
-    grid-column: 3;
     grid-template-columns: repeat(2, max-content);
     justify-content: start;
     justify-items: start;
+  }
+
+  .track-actions {
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
   }
 
   .mini-player {
