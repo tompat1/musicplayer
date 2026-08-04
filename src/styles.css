@@ -1974,16 +1974,19 @@ h1 {
 }
 
 .winamp-preset-select {
-  max-width: 66px;
+  width: min(112px, 32vw);
+  max-width: 112px;
+  min-width: 0;
   min-height: 13px;
-  padding: 0 2px;
+  padding: 0 14px 0 3px;
   border: 1px solid #06070d;
   border-radius: 1px;
   color: #05060b;
   background:
     linear-gradient(135deg, #f7fbff, #cfd7e0 48%, #8c98a7);
   box-shadow: inset 1px 1px 0 #fff;
-  font: 900 0.46rem/1 var(--mono);
+  font: 900 condensed 0.43rem/1 var(--mono);
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -2330,6 +2333,11 @@ h1 {
 
 .winamp-eq-panel {
   min-height: 94px;
+}
+
+.winamp-eq-panel .winamp-window-bar {
+  grid-template-columns: minmax(0, 1fr) max-content minmax(82px, 112px) max-content;
+  gap: 3px;
 }
 
 .winamp-eq-body {
