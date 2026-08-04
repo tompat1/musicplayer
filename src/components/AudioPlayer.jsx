@@ -166,7 +166,17 @@ function Slider({ label, value, onChange }) {
   );
 
   return (
-    <div className="slider-field" aria-label={label}>
+    <div
+      className="slider-field"
+      aria-label={label}
+      onPointerDown={(event) => {
+        if (event.target !== event.currentTarget || !sliderRef.current) return;
+        sliderRef.current.setPointerCapture(event.pointerId);
+        activePointerId.current = event.pointerId;
+        event.preventDefault();
+        updateValue(event);
+      }}
+    >
       <div
         ref={sliderRef}
         className="slider-track"
@@ -437,9 +447,9 @@ function WinampWindowBar({ title, children, quiet = false, onPointerDown, onPoin
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
-      {!quiet && <span className="winamp-title-lines" aria-hidden="true" />}
+      <span className="winamp-title-lines" aria-hidden="true" />
       <strong>{title}</strong>
-      {!quiet && <span className="winamp-title-lines" aria-hidden="true" />}
+      <span className="winamp-title-lines" aria-hidden="true" />
       <div className="winamp-window-tools">{children}</div>
     </div>
   );

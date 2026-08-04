@@ -1928,12 +1928,11 @@ h1 {
 }
 
 .winamp-window-bar.is-quiet {
-  grid-template-columns: minmax(0, 1fr) auto;
-  justify-items: start;
+  grid-template-columns: 1fr auto 1fr auto;
 }
 
 .winamp-window-bar.is-quiet strong {
-  padding-left: 4px;
+  justify-self: center;
 }
 
 .winamp-window-bar.is-quiet .winamp-window-tools {
@@ -2595,10 +2594,38 @@ h1 {
   }
 
   .winamp-window-bar {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
     min-height: calc(22px + env(safe-area-inset-top) / 3);
     padding-inline: 8px;
     cursor: default;
     touch-action: auto;
+  }
+
+  .winamp-window-bar strong {
+    justify-self: center;
+    white-space: nowrap;
+  }
+
+  .winamp-title-lines {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .winamp-window-tools {
+    justify-self: end;
+  }
+
+  .winamp-player-panel .winamp-window-tools {
+    display: none;
+  }
+
+  .winamp-window-bar.is-quiet {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .winamp-window-bar.is-quiet strong {
+    padding-left: 0;
   }
 
   .winamp-window-bar:active {
@@ -2640,7 +2667,15 @@ h1 {
   }
 
   .winamp-slider-control .slider-field {
+    position: relative;
     min-height: 46px;
+  }
+
+  .winamp-slider-control .slider-field::before {
+    content: "";
+    position: absolute;
+    inset: 4px 0;
+    pointer-events: none;
   }
 
   .winamp-slider-control .slider-track {
