@@ -17,6 +17,7 @@ const EQ_GAIN_MULTIPLIER = 1.75;
 const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
 const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
 const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
+const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const playerBrand = 'RYNELL PLAYER';
 
 const formatTime = (seconds) => {
@@ -555,6 +556,9 @@ function WinampMiniPlayer({
   onEqPresetSave,
   onRestore,
   onSelect,
+  onEditTitle,
+  onDeleteTrack,
+  onToggleFavorite,
   onTogglePlaylist,
   onVisualModeChange,
   onTitlePointerDown,
@@ -735,17 +739,36 @@ function WinampMiniPlayer({
             tracks.map((playlistTrack, index) => {
               const isActive = index === currentIndex;
               return (
-                <button
-                  type="button"
+                <div
                   key={playlistTrack.filename}
                   className="winamp-song-row"
                   data-active={isActive}
-                  onClick={() => onSelect(index)}
+                  data-favorite={playlistTrack.favorite}
+                  role="listitem"
                 >
-                  <span>{`${index + 1}.`}</span>
-                  <strong>{getTrackTitle(playlistTrack)}</strong>
-                  <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
-                </button>
+                  <button type="button" className="winamp-song-select" onClick={() => onSelect(index)}>
+                    <span>{playlistTrack.favorite ? 'FAV' : `${index + 1}.`}</span>
+                    <strong>{getTrackTitle(playlistTrack)}</strong>
+                    <small>{getPlaylistDuration(playlistTrack, index, durations, currentIndex, 0)}</small>
+                  </button>
+                  <span className="winamp-song-actions">
+                    <button
+                      type="button"
+                      aria-pressed={playlistTrack.favorite}
+                      data-active={playlistTrack.favorite}
+                      onClick={() => onToggleFavorite(playlistTrack)}
+                      title={`${playlistTrack.favorite ? 'Remove favorite' : 'Favorite'} ${getTrackTitle(playlistTrack)}`}
+                    >
+                      Fav
+                    </button>
+                    <button type="button" onClick={() => onEditTitle(playlistTrack)} title={`Edit title for ${getTrackTitle(playlistTrack)}`}>
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => onDeleteTrack(playlistTrack)} title={`Hide ${getTrackTitle(playlistTrack)} from library`}>
+                      Hide
+                    </button>
+                  </span>
+                </div>
               );
             })
           )}
@@ -831,6 +854,7 @@ function Playlist({
   onSelect,
   onEditTitle,
   onDeleteTrack,
+  onToggleFavorite,
   liveDuration,
   durations,
 }) {
@@ -841,8 +865,9 @@ function Playlist({
     return tracks
       .map((track, index) => ({ track, index }))
       .filter(({ track }) => {
-        const haystack = [track.title, track.mix, track.version, track.format, track.bpm, track.key, track.filename]
+        const haystack = [getTrackTitle(track), track.title, track.mix, track.version, track.format, track.bpm, track.key, track.filename]
           .concat(track.source, track.flowUrl)
+          .concat(track.favorite ? 'favorite fav' : '')
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -881,6 +906,7 @@ function Playlist({
                 className="track-row"
                 key={track.filename}
                 data-active={isActive}
+                data-favorite={track.favorite}
                 role="listitem"
               >
                 <button
@@ -899,16 +925,26 @@ function Playlist({
                   </span>
                 </button>
                 <span className="track-tags">
+                  {track.favorite && <span>FAV</span>}
                   {track.source === 'google-flow' && <span>FLOW</span>}
                   <span>{track.format || 'AUDIO'}</span>
                   <span>{getPlaylistDuration(track, index, durations, currentIndex, liveDuration)}</span>
                 </span>
                 <span className="track-actions">
+                  <button
+                    type="button"
+                    aria-pressed={track.favorite}
+                    data-active={track.favorite}
+                    onClick={() => onToggleFavorite(track)}
+                    title={`${track.favorite ? 'Remove favorite' : 'Favorite'} ${getTrackTitle(track)}`}
+                  >
+                    Fav
+                  </button>
                   <button type="button" onClick={() => onEditTitle(track)} title={`Edit title for ${getTrackTitle(track)}`}>
                     Edit
                   </button>
-                  <button type="button" onClick={() => onDeleteTrack(track)} title={`Delete ${getTrackTitle(track)} from library`}>
-                    Delete
+                  <button type="button" onClick={() => onDeleteTrack(track)} title={`Hide ${getTrackTitle(track)} from library`}>
+                    Hide
                   </button>
                 </span>
               </div>
@@ -947,6 +983,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [activeEqPreset, setActiveEqPreset] = useState('');
   const [customTitles, setCustomTitles] = useState(() => readLocalStorageJson(CUSTOM_TITLES_STORAGE_KEY, {}));
   const [deletedTracks, setDeletedTracks] = useState(() => readLocalStorageJson(DELETED_TRACKS_STORAGE_KEY, []));
+  const [favoriteTracks, setFavoriteTracks] = useState(() => readLocalStorageJson(FAVORITE_TRACKS_STORAGE_KEY, []));
   const [eqPresets, setEqPresets] = useState(() => {
     return readLocalStorageJson(EQ_PRESETS_STORAGE_KEY, {});
   });
@@ -957,14 +994,19 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const miniDragOffset = useRef({ x: 0, y: 0 });
   const shuffleQueue = useRef([]);
   const deletedTrackSet = useMemo(() => new Set(deletedTracks), [deletedTracks]);
+  const favoriteTrackSet = useMemo(() => new Set(favoriteTracks), [favoriteTracks]);
   const tracks = useMemo(() => (
     catalogTracks
       .filter((track) => !deletedTrackSet.has(track.filename))
       .map((track) => {
         const customTitle = customTitles[track.filename];
-        return customTitle ? { ...track, displayTitle: customTitle } : track;
+        return {
+          ...track,
+          favorite: favoriteTrackSet.has(track.filename),
+          ...(customTitle ? { displayTitle: customTitle } : {}),
+        };
       })
-  ), [catalogTracks, customTitles, deletedTrackSet]);
+  ), [catalogTracks, customTitles, deletedTrackSet, favoriteTrackSet]);
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
 
@@ -1200,7 +1242,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const deleteTrack = useCallback((track) => {
     if (!track?.filename) return;
     const title = getTrackTitle(track);
-    if (!window.confirm(`Delete "${title}" from this library? The audio file will stay in the assets folder.`)) return;
+    if (!window.confirm(`Hide "${title}" from this library? The audio file will stay in the assets folder.`)) return;
 
     setDeletedTracks((currentDeletedTracks) => {
       if (currentDeletedTracks.includes(track.filename)) return currentDeletedTracks;
@@ -1217,8 +1259,26 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       return nextTitles;
     });
 
+    setFavoriteTracks((currentFavoriteTracks) => {
+      if (!currentFavoriteTracks.includes(track.filename)) return currentFavoriteTracks;
+      const nextFavoriteTracks = currentFavoriteTracks.filter((filename) => filename !== track.filename);
+      window.localStorage.setItem(FAVORITE_TRACKS_STORAGE_KEY, JSON.stringify(nextFavoriteTracks));
+      return nextFavoriteTracks;
+    });
+
     setTrackIndex((index) => clamp(index, 0, Math.max(0, tracks.length - 2)));
   }, [tracks.length]);
+
+  const toggleFavorite = useCallback((track) => {
+    if (!track?.filename) return;
+    setFavoriteTracks((currentFavoriteTracks) => {
+      const nextFavoriteTracks = currentFavoriteTracks.includes(track.filename)
+        ? currentFavoriteTracks.filter((filename) => filename !== track.filename)
+        : [...currentFavoriteTracks, track.filename];
+      window.localStorage.setItem(FAVORITE_TRACKS_STORAGE_KEY, JSON.stringify(nextFavoriteTracks));
+      return nextFavoriteTracks;
+    });
+  }, []);
 
   const setEqGain = useCallback((index, gain) => {
     setActiveEqPreset('');
@@ -1452,6 +1512,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onEqPresetSave={saveEqPreset}
               onRestore={restoreFullPlayer}
               onSelect={selectTrack}
+              onEditTitle={editTrackTitle}
+              onDeleteTrack={deleteTrack}
+              onToggleFavorite={toggleFavorite}
               onTogglePlaylist={() => setMiniPlaylistOpen((value) => !value)}
               onVisualModeChange={setVisualMode}
               onTitlePointerDown={onMiniTitlePointerDown}
@@ -1561,6 +1624,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         onSelect={selectTrack}
         onEditTitle={editTrackTitle}
         onDeleteTrack={deleteTrack}
+        onToggleFavorite={toggleFavorite}
         liveDuration={duration}
         durations={durations}
       />
