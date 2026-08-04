@@ -1776,22 +1776,38 @@ h1 {
 
   .track-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
+    min-height: auto;
+    padding: 12px;
   }
 
   .track-select {
     grid-template-columns: 34px 42px minmax(0, 1fr);
+    gap: 9px;
+    min-height: 46px;
+  }
+
+  .track-main strong {
+    font-size: 0.88rem;
+    line-height: 1.25;
   }
 
   .track-tags {
     grid-template-columns: repeat(2, max-content);
     justify-content: start;
     justify-items: start;
+    padding-left: 85px;
   }
 
   .track-actions {
-    grid-template-columns: repeat(2, max-content);
+    grid-template-columns: repeat(3, max-content);
     justify-content: start;
+    padding-left: 85px;
+  }
+
+  .track-actions button {
+    min-height: 32px;
+    padding: 7px 8px;
   }
 
   .mini-player {
@@ -2669,28 +2685,60 @@ h1 {
     flex: 1 1 auto;
     max-height: none;
     min-height: 0;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 4px 0 max(8px, env(safe-area-inset-bottom));
   }
 
   .winamp-song-row {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 36px;
-    padding: 5px 10px;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 5px;
+    min-height: auto;
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(0, 255, 54, 0.08);
   }
 
   .winamp-song-select {
-    grid-template-columns: 44px minmax(0, 1fr) 46px;
+    grid-template-columns: 24px minmax(0, 1fr) 34px;
+    gap: 4px;
+    min-height: 24px;
   }
 
   .winamp-song-actions {
-    justify-content: start;
+    display: flex;
+    gap: 3px;
+    justify-content: end;
+    min-width: max-content;
+    padding-left: 0;
   }
 
   .winamp-song-row span,
   .winamp-song-row small,
   .winamp-song-row button,
   .winamp-song-row strong {
-    font-size: 0.67rem;
+    font-size: 0.58rem;
+  }
+
+  .winamp-song-row strong {
+    line-height: 1.15;
+  }
+
+  .winamp-song-row small {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .winamp-song-actions button {
+    min-height: 24px;
+    padding: 4px 5px;
+  }
+
+  .winamp-song-row[data-active="true"] .winamp-song-actions button {
+    border-color: rgba(2, 4, 3, 0.38);
+    color: #020403;
+    background: rgba(2, 4, 3, 0.08);
+  }
+
+  .winamp-song-row[data-active="true"] .winamp-song-actions button[data-active="true"] {
+    color: #00ff36;
+    background: #020403;
   }
 
   .winamp-playlist-footer {
