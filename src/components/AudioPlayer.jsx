@@ -610,11 +610,8 @@ function WinampMiniPlayer({
             <button type="button" onClick={onPrevious} title="Previous track">
               <WinampTransportIcon type="previous" />
             </button>
-            <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'} data-active={!playing}>
-              <WinampTransportIcon type="play" />
-            </button>
             <button type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'} data-active={playing}>
-              <WinampTransportIcon type="pause" />
+              <WinampTransportIcon type={playing ? 'pause' : 'play'} />
             </button>
             <button type="button" onClick={onStop} title="Stop">
               <WinampTransportIcon type="stop" />

@@ -2047,7 +2047,7 @@ h1 {
 
 .winamp-controls {
   display: grid;
-  grid-template-columns: repeat(5, 28px) repeat(2, minmax(55px, 1fr));
+  grid-template-columns: repeat(4, 28px) repeat(2, minmax(55px, 1fr));
   gap: 3px;
   padding: 0;
 }
@@ -2503,7 +2503,7 @@ h1 {
   }
 
   .winamp-controls {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .winamp-controls .winamp-led-button {
