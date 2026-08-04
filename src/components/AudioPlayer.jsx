@@ -43,6 +43,17 @@ const getLibraryDetails = (track) => {
   return [source, track?.key, track?.bpm && `${track.bpm} BPM`].filter(Boolean).join(' / ');
 };
 
+const shuffleIndexes = (length, currentIndex = -1) => {
+  const indexes = Array.from({ length }, (_, index) => index).filter((index) => index !== currentIndex);
+
+  for (let index = indexes.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [indexes[index], indexes[swapIndex]] = [indexes[swapIndex], indexes[index]];
+  }
+
+  return indexes;
+};
+
 const isKeyboardControlTarget = (target) => {
   if (!(target instanceof Element)) return false;
   return Boolean(
@@ -842,11 +853,16 @@ export default function AudioPlayer({ tracks = [] }) {
   const miniRef = useRef(null);
   const miniDragging = useRef(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
+  const shuffleQueue = useRef([]);
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
 
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
+  }, [trackIndex, tracks.length]);
+
+  useEffect(() => {
+    shuffleQueue.current = shuffleQueue.current.filter((index) => index < tracks.length && index !== trackIndex);
   }, [trackIndex, tracks.length]);
 
   useEffect(() => {
@@ -887,6 +903,19 @@ export default function AudioPlayer({ tracks = [] }) {
     };
   }, []);
 
+  const getNextShuffledIndex = useCallback((currentIndex = trackIndex) => {
+    if (tracks.length <= 1) return currentIndex;
+    shuffleQueue.current = shuffleQueue.current.filter((index) => index < tracks.length && index !== currentIndex);
+    if (shuffleQueue.current.length === 0) {
+      shuffleQueue.current = shuffleIndexes(tracks.length, currentIndex);
+    }
+    return shuffleQueue.current.shift() ?? currentIndex;
+  }, [trackIndex, tracks.length]);
+
+  useEffect(() => {
+    if (!shuffle) shuffleQueue.current = [];
+  }, [shuffle]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return undefined;
@@ -904,7 +933,7 @@ export default function AudioPlayer({ tracks = [] }) {
       }
 
       if (shuffle) {
-        setTrackIndex(Math.floor(Math.random() * tracks.length));
+        setTrackIndex((index) => getNextShuffledIndex(index));
         return;
       }
 
@@ -921,7 +950,7 @@ export default function AudioPlayer({ tracks = [] }) {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [repeat, shuffle, trackIndex, tracks.length]);
+  }, [getNextShuffledIndex, repeat, shuffle, trackIndex, tracks.length]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -1013,9 +1042,22 @@ export default function AudioPlayer({ tracks = [] }) {
 
   const next = useCallback(() => {
     if (!tracks.length) return;
-    if (shuffle) setTrackIndex(Math.floor(Math.random() * tracks.length));
+    if (shuffle) setTrackIndex((index) => getNextShuffledIndex(index));
     else setTrackIndex((index) => (index + 1) % tracks.length);
-  }, [shuffle, tracks.length]);
+  }, [getNextShuffledIndex, shuffle, tracks.length]);
+
+  const toggleShuffle = useCallback(() => {
+    if (shuffle) {
+      setShuffle(false);
+      shuffleQueue.current = [];
+      return;
+    }
+
+    setShuffle(true);
+    if (tracks.length > 1) {
+      setTrackIndex((index) => getNextShuffledIndex(index));
+    }
+  }, [getNextShuffledIndex, shuffle, tracks.length]);
 
   const selectTrack = (index) => {
     setTrackIndex(index);
@@ -1239,7 +1281,7 @@ export default function AudioPlayer({ tracks = [] }) {
               onStop={stop}
               onPrevious={previous}
               onNext={next}
-              onToggleShuffle={() => setShuffle((value) => !value)}
+              onToggleShuffle={toggleShuffle}
               onToggleRepeat={() => setRepeat((value) => !value)}
               onToggleEq={() => setEqEnabled((value) => !value)}
               onToggleEqPanel={() => setEqPanelOpen((value) => !value)}
@@ -1325,7 +1367,7 @@ export default function AudioPlayer({ tracks = [] }) {
             </div>
 
             <div className="utility-row">
-              <button type="button" onClick={() => setShuffle((value) => !value)} aria-pressed={shuffle} data-active={shuffle}>
+              <button type="button" onClick={toggleShuffle} aria-pressed={shuffle} data-active={shuffle}>
                 Shuffle
               </button>
               <button type="button" onClick={() => setRepeat((value) => !value)} aria-pressed={repeat} data-active={repeat}>
