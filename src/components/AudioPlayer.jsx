@@ -5,6 +5,7 @@ const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const BUILT_IN_EQ_PRESETS = {
+  None: DEFAULT_EQ_GAINS,
   'Bass Boost': [8, 7, 5, 2, 0, -1, -2, -2, -1, 0],
   Electronica: [6, 5, 2, 0, -2, 3, 5, 6, 5, 4],
   Disco: [5, 4, 1, -2, -1, 2, 4, 5, 4, 3],
@@ -564,6 +565,28 @@ function WinampMiniPlayer({
   const style = position ? { left: position.x, top: position.y } : undefined;
   const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
   const format = track?.format || 'AUDIO';
+  const trackTitle = getTrackTitle(track).toUpperCase();
+  const marqueeRef = useRef(null);
+  const marqueeTextRef = useRef(null);
+  const [titleOverflowing, setTitleOverflowing] = useState(false);
+
+  useEffect(() => {
+    const marquee = marqueeRef.current;
+    const text = marqueeTextRef.current;
+    if (!marquee || !text) return undefined;
+
+    const syncOverflow = () => {
+      const overflowWidth = Math.max(0, text.scrollWidth - marquee.clientWidth);
+      setTitleOverflowing(overflowWidth > 2);
+      text.style.setProperty('--scroll-distance', `${overflowWidth}px`);
+    };
+
+    syncOverflow();
+    const resizeObserver = new ResizeObserver(syncOverflow);
+    resizeObserver.observe(marquee);
+    resizeObserver.observe(text);
+    return () => resizeObserver.disconnect();
+  }, [trackTitle]);
 
   return (
     <aside ref={playerRef} className="winamp-mini" data-skin="classic" style={style} aria-label="Floating Winamp miniplayer">
@@ -593,8 +616,8 @@ function WinampMiniPlayer({
           </div>
 
           <div className="winamp-track-display">
-            <div className="winamp-marquee">
-              <span data-playing={playing}>{getTrackTitle(track).toUpperCase()}</span>
+            <div className="winamp-marquee" ref={marqueeRef} data-overflowing={titleOverflowing}>
+              <span ref={marqueeTextRef} data-overflowing={titleOverflowing}>{trackTitle}</span>
             </div>
             <div className="winamp-tech-row">
               <span>{bitrate} kbps</span>

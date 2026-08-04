@@ -944,6 +944,17 @@ h1 {
   }
 }
 
+@keyframes winamp-title-scroll {
+  0%,
+  14% {
+    transform: translateX(0);
+  }
+  86%,
+  100% {
+    transform: translateX(calc(-1 * var(--scroll-distance, 55%)));
+  }
+}
+
 @keyframes winamp-meter {
   from {
     height: 18%;
@@ -2011,10 +2022,17 @@ h1 {
 
 .winamp-track-display .winamp-marquee span {
   padding-left: 0;
+  min-width: 0;
 }
 
 .winamp-track-display .winamp-marquee span[data-playing="true"] {
   animation: none;
+}
+
+.winamp-track-display .winamp-marquee span[data-overflowing="true"] {
+  min-width: max-content;
+  animation: winamp-title-scroll 9s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 .winamp-tech-row {
