@@ -3073,7 +3073,7 @@ h1 {
 .winamp-radio-wrap .radio-source-tabs button[data-active="true"],
 .winamp-radio-wrap .radio-genre-chips button[data-active="true"],
 .winamp-radio-wrap .radio-station-actions button[data-active="true"] {
-  color: #f7f7d0;
+  color: #00ff36;
   background:
     linear-gradient(135deg, #2b3048 0 20%, #707995 48%, #d8ddea 100%);
   font-weight: 900;
@@ -3517,6 +3517,44 @@ h1 {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 4px 0 max(8px, env(safe-area-inset-bottom));
+  }
+
+  .winamp-radio-wrap {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .winamp-radio-wrap .radio-browser-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .winamp-radio-wrap .radio-genre-chips {
+    flex: 0 0 auto;
+  }
+
+  .winamp-radio-wrap .radio-filter-grid {
+    flex: 0 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .winamp-radio-wrap .radio-filter-grid label:nth-child(1),
+  .winamp-radio-wrap .radio-filter-grid label:nth-child(2) {
+    grid-column: span 2;
+  }
+
+  .winamp-radio-wrap .radio-toolbar,
+  .winamp-radio-wrap .radio-source-tabs {
+    flex: 0 0 auto;
+  }
+
+  .winamp-radio-wrap .radio-station-list {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .winamp-song-row {
