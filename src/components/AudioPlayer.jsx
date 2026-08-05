@@ -515,11 +515,12 @@ function PanelDragHandle({ panel, label, detached = false, onPointerDown, onPoin
   );
 }
 
-function ResizeHandle({ label, onPointerDown, onPointerMove, onPointerUp }) {
+function ResizeHandle({ label, axis = 'both', onPointerDown, onPointerMove, onPointerUp }) {
   return (
     <button
       type="button"
       className="panel-resize-handle"
+      data-axis={axis}
       aria-label={`Resize ${label}`}
       title={`Resize ${label}`}
       onPointerDown={onPointerDown}
@@ -658,7 +659,7 @@ function WinampMiniPlayer({
     const panelPosition = panelOffsets[panel];
     if (!panelPosition) {
       const panelSize = panelSizes[panel];
-      return panelSize ? { width: panelSize.width, height: panelSize.height } : undefined;
+      return panelSize ? { height: panelSize.height } : undefined;
     }
     return {
       position: 'fixed',
@@ -672,9 +673,8 @@ function WinampMiniPlayer({
   const getPanelSlotStyle = (panel) => {
     if (!canOpenFullPlayer) return undefined;
     const panelPosition = panelOffsets[panel];
-    const panelSize = panelSizes[panel];
     if (panelPosition) return { width: panelPosition.width };
-    return panelSize ? { width: panelSize.width } : undefined;
+    return undefined;
   };
   const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
   const format = track?.format || 'AUDIO';
@@ -942,6 +942,7 @@ function WinampMiniPlayer({
         {canOpenFullPlayer && (
           <ResizeHandle
             label="playlist"
+            axis={isPanelDetached(panelOffsets.playlist) ? 'both' : 'vertical'}
             onPointerDown={(event) => onPanelResizePointerDown('playlist', event)}
             onPointerMove={onPanelResizePointerMove}
             onPointerUp={onPanelResizePointerUp}
@@ -1236,6 +1237,7 @@ function Playlist({
       {resizable && (
         <ResizeHandle
           label="library"
+          axis="vertical"
           onPointerDown={onResizePointerDown}
           onPointerMove={onResizePointerMove}
           onPointerUp={onResizePointerUp}
@@ -1959,7 +1961,10 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
     setPanelSizes((sizes) => ({
       ...sizes,
-      [resize.panel]: nextSize,
+      [resize.panel]: {
+        width: resize.origin.width,
+        height: nextSize.height,
+      },
     }));
   }, []);
 
@@ -1999,11 +2004,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     if (!resize || resize.pointerId !== event.pointerId) return;
     event.preventDefault();
     event.stopPropagation();
-    const shellWidth = document.querySelector('.player-shell:not(.is-minimized)')?.getBoundingClientRect().width || window.innerWidth;
-    const maxWidth = Math.max(MIN_LIBRARY_WIDTH, Math.min(720, shellWidth - 420));
     const maxHeight = Math.max(MIN_LIBRARY_HEIGHT, window.innerHeight - 36);
     setLibrarySize({
-      width: clamp(resize.origin.width + event.clientX - resize.startX, MIN_LIBRARY_WIDTH, maxWidth),
+      width: resize.origin.width,
       height: clamp(resize.origin.height + event.clientY - resize.startY, MIN_LIBRARY_HEIGHT, maxHeight),
     });
   }, []);

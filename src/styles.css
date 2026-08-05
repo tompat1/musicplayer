@@ -1468,6 +1468,10 @@ h1 {
     linear-gradient(135deg, transparent 0 82%, #f2fff4 83% 88%, transparent 89%);
 }
 
+.panel-resize-handle[data-axis="vertical"] {
+  cursor: ns-resize;
+}
+
 .track-list:active {
   cursor: pointer;
 }
