@@ -23,6 +23,7 @@ const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
 const playerBrand = 'RYNELL PLAYER';
+const EMPTY_PANEL_OFFSETS = { eq: null, playlist: null };
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -1122,6 +1123,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
+  const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
 
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
@@ -1709,7 +1711,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               progress={progress}
               position={miniPosition}
               dragging={isDraggingMini}
-              panelOffsets={panelOffsets}
+              panelOffsets={renderedPanelOffsets}
               activePanel={activePanel}
               playlistOpen={miniPlaylistOpen}
               durations={durations}
