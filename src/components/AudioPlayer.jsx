@@ -601,6 +601,23 @@ function ResizeHandle({ label, axis = 'both', onPointerDown, onPointerMove, onPo
   );
 }
 
+function RadioFavicon({ station }) {
+  const [failed, setFailed] = useState(false);
+  const initials = station.name.slice(0, 2).toUpperCase();
+
+  if (!station.favicon || failed) return initials;
+
+  return (
+    <img
+      src={station.favicon}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
@@ -1404,7 +1421,7 @@ function RadioBrowserPanel({
             <article className="radio-station-row" key={stationId} role="listitem" data-active={active}>
               <button className="radio-station-main" type="button" onClick={() => onPlayStation(station)}>
                 <span className="radio-favicon">
-                  {station.favicon ? <img src={station.favicon} alt="" loading="lazy" /> : station.name.slice(0, 2).toUpperCase()}
+                  <RadioFavicon station={station} />
                 </span>
                 <span className="radio-station-copy">
                   <strong>{station.name}</strong>
