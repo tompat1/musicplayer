@@ -21,6 +21,7 @@ const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
+const PANEL_SIZES_STORAGE_KEY = 'rynell-player-panel-sizes';
 const LIBRARY_SIZE_STORAGE_KEY = 'rynell-player-library-size';
 const STORAGE_CONSENT_KEY = 'rynell-player-storage-consent';
 const playerBrand = 'RYNELL PLAYER';
@@ -598,6 +599,7 @@ function WinampMiniPlayer({
   dragging,
   panelOffsets,
   activePanel,
+  panelSizes,
   playlistOpen,
   durations,
   volume,
@@ -654,7 +656,10 @@ function WinampMiniPlayer({
   const getPanelStyle = (panel) => {
     if (!canOpenFullPlayer) return undefined;
     const panelPosition = panelOffsets[panel];
-    if (!panelPosition) return undefined;
+    if (!panelPosition) {
+      const panelSize = panelSizes[panel];
+      return panelSize ? { width: panelSize.width, height: panelSize.height } : undefined;
+    }
     return {
       position: 'fixed',
       left: panelPosition.x,
@@ -667,7 +672,9 @@ function WinampMiniPlayer({
   const getPanelSlotStyle = (panel) => {
     if (!canOpenFullPlayer) return undefined;
     const panelPosition = panelOffsets[panel];
-    return panelPosition ? { width: panelPosition.width } : undefined;
+    const panelSize = panelSizes[panel];
+    if (panelPosition) return { width: panelPosition.width };
+    return panelSize ? { width: panelSize.width } : undefined;
   };
   const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
   const format = track?.format || 'AUDIO';
@@ -1286,6 +1293,22 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       playlist: normalizePanelPosition(storedPositions.playlist),
     };
   });
+  const [panelSizes, setPanelSizes] = useState(() => {
+    const storedSizes = readLocalStorageJson(PANEL_SIZES_STORAGE_KEY, {});
+    const normalizePanelSize = (size) => {
+      if (!size) return null;
+      const width = Number(size.width);
+      const height = Number(size.height);
+      if (![width, height].every(Number.isFinite)) return null;
+      return {
+        width: Math.max(MIN_PLAYLIST_WIDTH, width),
+        height: Math.max(MIN_PLAYLIST_HEIGHT, height),
+      };
+    };
+    return {
+      playlist: normalizePanelSize(storedSizes.playlist),
+    };
+  });
   const [activePanel, setActivePanel] = useState('');
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
@@ -1354,6 +1377,10 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   useEffect(() => {
     writeLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, panelOffsets);
   }, [panelOffsets]);
+
+  useEffect(() => {
+    writeLocalStorageJson(PANEL_SIZES_STORAGE_KEY, panelSizes);
+  }, [panelSizes]);
 
   useEffect(() => {
     writeLocalStorageJson(LIBRARY_SIZE_STORAGE_KEY, librarySize);
@@ -1889,17 +1916,21 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       width: rect.width,
       height: rect.height,
     };
+    const detached = Boolean(panelOffsets[panel]);
     panelResizing.current = {
       panel,
+      detached,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       origin,
     };
-    setPanelOffsets((offsets) => ({
-      ...offsets,
-      [panel]: origin,
-    }));
+    if (detached) {
+      setPanelOffsets((offsets) => ({
+        ...offsets,
+        [panel]: origin,
+      }));
+    }
     setActivePanel(panel);
   }, [isMobile, panelOffsets]);
 
@@ -1910,13 +1941,25 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     event.stopPropagation();
     const maxWidth = Math.max(MIN_PLAYLIST_WIDTH, window.innerWidth - resize.origin.x);
     const maxHeight = Math.max(MIN_PLAYLIST_HEIGHT, window.innerHeight - resize.origin.y);
-    setPanelOffsets((offsets) => ({
-      ...offsets,
-      [resize.panel]: {
-        ...resize.origin,
-        width: clamp(resize.origin.width + event.clientX - resize.startX, MIN_PLAYLIST_WIDTH, maxWidth),
-        height: clamp(resize.origin.height + event.clientY - resize.startY, MIN_PLAYLIST_HEIGHT, maxHeight),
-      },
+    const nextSize = {
+      width: clamp(resize.origin.width + event.clientX - resize.startX, MIN_PLAYLIST_WIDTH, maxWidth),
+      height: clamp(resize.origin.height + event.clientY - resize.startY, MIN_PLAYLIST_HEIGHT, maxHeight),
+    };
+
+    if (resize.detached) {
+      setPanelOffsets((offsets) => ({
+        ...offsets,
+        [resize.panel]: {
+          ...resize.origin,
+          ...nextSize,
+        },
+      }));
+      return;
+    }
+
+    setPanelSizes((sizes) => ({
+      ...sizes,
+      [resize.panel]: nextSize,
     }));
   }, []);
 
@@ -2019,6 +2062,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               position={miniPosition}
               dragging={isDraggingMini}
               panelOffsets={renderedPanelOffsets}
+              panelSizes={panelSizes}
               activePanel={activePanel}
               playlistOpen={miniPlaylistOpen}
               durations={durations}
