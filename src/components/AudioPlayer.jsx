@@ -19,7 +19,6 @@ const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
 const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
 const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const FAVORITE_RADIO_STATIONS_STORAGE_KEY = 'rynell-player-favorite-radio-stations';
-const RADIO_PRESETS_STORAGE_KEY = 'rynell-player-radio-presets';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
@@ -1257,11 +1256,9 @@ function StorageConsentModal() {
 function RadioBrowserPanel({
   activeStationId,
   favoriteStations,
-  presetStations,
   playing,
   onPlayStation,
   onToggleFavoriteStation,
-  onTogglePresetStation,
 }) {
   const [filters, setFilters] = useState(RADIO_DEFAULT_FILTERS);
   const [stations, setStations] = useState([]);
@@ -1270,9 +1267,7 @@ function RadioBrowserPanel({
   const [source, setSource] = useState('results');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const favoriteStationSet = useMemo(() => new Set(favoriteStations.map(getStationId)), [favoriteStations]);
-  const presetStationSet = useMemo(() => new Set(presetStations.map(getStationId)), [presetStations]);
-  const savedStations = source === 'favorites' ? favoriteStations : presetStations;
-  const visibleStations = source === 'results' ? stations : savedStations;
+  const visibleStations = source === 'results' ? stations : favoriteStations;
 
   const updateFilter = (key, value) => {
     setSource('results');
@@ -1325,7 +1320,6 @@ function RadioBrowserPanel({
         {[
           ['results', `Results ${stations.length}`],
           ['favorites', `Favorites ${favoriteStations.length}`],
-          ['presets', `Presets ${presetStations.length}`],
         ].map(([value, label]) => (
           <button key={value} type="button" data-active={source === value} onClick={() => setSource(value)}>
             {label}
@@ -1455,13 +1449,6 @@ function RadioBrowserPanel({
                   onClick={() => onToggleFavoriteStation(station)}
                 >
                   FAV
-                </button>
-                <button
-                  type="button"
-                  data-active={presetStationSet.has(stationId)}
-                  onClick={() => onTogglePresetStation(station)}
-                >
-                  PRESET
                 </button>
               </span>
             </article>
@@ -1686,9 +1673,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [favoriteRadioStations, setFavoriteRadioStations] = useState(() => (
     readLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, []).map(normalizeRadioStation).filter(Boolean)
   ));
-  const [radioPresets, setRadioPresets] = useState(() => (
-    readLocalStorageJson(RADIO_PRESETS_STORAGE_KEY, []).map(normalizeRadioStation).filter(Boolean)
-  ));
   const [radioTrack, setRadioTrack] = useState(null);
   const [eqPresets, setEqPresets] = useState(() => {
     return readLocalStorageJson(EQ_PRESETS_STORAGE_KEY, {});
@@ -1765,10 +1749,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   useEffect(() => {
     writeLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, favoriteRadioStations);
   }, [favoriteRadioStations]);
-
-  useEffect(() => {
-    writeLocalStorageJson(RADIO_PRESETS_STORAGE_KEY, radioPresets);
-  }, [radioPresets]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 820px)');
@@ -2038,10 +2018,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const toggleFavoriteRadioStation = useCallback((station) => {
     toggleSavedRadioStation(station, setFavoriteRadioStations);
-  }, [toggleSavedRadioStation]);
-
-  const toggleRadioPreset = useCallback((station) => {
-    toggleSavedRadioStation(station, setRadioPresets);
   }, [toggleSavedRadioStation]);
 
   const editTrackTitle = useCallback((track) => {
@@ -2542,11 +2518,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               radioProps={{
                 activeStationId: currentRadioStationId,
                 favoriteStations: favoriteRadioStations,
-                presetStations: radioPresets,
                 playing: isPlaying,
                 onPlayStation: playRadioStation,
                 onToggleFavoriteStation: toggleFavoriteRadioStation,
-                onTogglePresetStation: toggleRadioPreset,
               }}
               playerRef={miniRef}
               canOpenFullPlayer={!isMobile}
@@ -2657,11 +2631,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         radioProps={{
           activeStationId: currentRadioStationId,
           favoriteStations: favoriteRadioStations,
-          presetStations: radioPresets,
           playing: isPlaying,
           onPlayStation: playRadioStation,
           onToggleFavoriteStation: toggleFavoriteRadioStation,
-          onTogglePresetStation: toggleRadioPreset,
         }}
       />
         </>
