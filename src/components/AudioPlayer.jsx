@@ -32,7 +32,11 @@ const MIN_LIBRARY_WIDTH = 360;
 const MIN_LIBRARY_HEIGHT = 420;
 const MIN_PLAYLIST_WIDTH = 260;
 const MIN_PLAYLIST_HEIGHT = 190;
-const RADIO_BROWSER_BASE_URL = 'https://de1.api.radio-browser.info';
+const RADIO_BROWSER_DISCOVERY_URL = 'https://api.radio-browser.info/json/servers';
+const RADIO_BROWSER_FALLBACK_BASE_URLS = [
+  'https://nl1.api.radio-browser.info',
+  'https://de1.api.radio-browser.info',
+];
 const RADIO_GENRES = ['electronica', 'rock', 'pop', '60s', '70s', '80s', '90s', 'jazz', 'ambient', 'house', 'techno', 'disco', 'funk', 'soul', 'classical'];
 const RADIO_SORT_OPTIONS = ['votes', 'clickcount', 'clicktrend', 'bitrate', 'random'];
 const RADIO_CODEC_OPTIONS = ['', 'MP3', 'AAC', 'OGG', 'OPUS', 'HLS'];
@@ -45,6 +49,8 @@ const RADIO_DEFAULT_FILTERS = {
   onlyWorking: true,
   sort: 'votes',
 };
+
+let cachedRadioBrowserBaseUrls = null;
 const STORAGE_CONSENT_VERSION = 1;
 const DEFAULT_STORAGE_CONSENT = {
   version: STORAGE_CONSENT_VERSION,
@@ -129,6 +135,82 @@ const getStationTagList = (station) => (
     .map((tag) => tag.trim())
     .filter(Boolean)
 );
+
+const normalizeRadioBrowserBaseUrl = (server) => {
+  const name = typeof server === 'string' ? server : server?.name;
+  const host = String(name || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  if (!host || !host.endsWith('.api.radio-browser.info')) return '';
+  return `https://${host}`;
+};
+
+const sortRadioBrowserMirrors = (baseUrls) => (
+  [...baseUrls].sort((a, b) => {
+    const aIsFallbackFirst = a === RADIO_BROWSER_FALLBACK_BASE_URLS[0] ? 0 : 1;
+    const bIsFallbackFirst = b === RADIO_BROWSER_FALLBACK_BASE_URLS[0] ? 0 : 1;
+    if (aIsFallbackFirst !== bIsFallbackFirst) return aIsFallbackFirst - bIsFallbackFirst;
+    const aIsKnownCorsNoisy = a.includes('de1.api.radio-browser.info') ? 1 : 0;
+    const bIsKnownCorsNoisy = b.includes('de1.api.radio-browser.info') ? 1 : 0;
+    return aIsKnownCorsNoisy - bIsKnownCorsNoisy;
+  })
+);
+
+const getRadioBrowserBaseUrls = async () => {
+  if (cachedRadioBrowserBaseUrls) return cachedRadioBrowserBaseUrls;
+
+  try {
+    const response = await fetch(RADIO_BROWSER_DISCOVERY_URL, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Radio Browser mirror lookup returned ${response.status}`);
+    const servers = await response.json();
+    const discoveredBaseUrls = Array.isArray(servers)
+      ? servers.map(normalizeRadioBrowserBaseUrl).filter(Boolean)
+      : [];
+    cachedRadioBrowserBaseUrls = sortRadioBrowserMirrors([
+      ...new Set([...discoveredBaseUrls, ...RADIO_BROWSER_FALLBACK_BASE_URLS]),
+    ]);
+  } catch {
+    cachedRadioBrowserBaseUrls = RADIO_BROWSER_FALLBACK_BASE_URLS;
+  }
+
+  return cachedRadioBrowserBaseUrls;
+};
+
+const fetchRadioBrowserJson = async (path, signal) => {
+  const baseUrls = await getRadioBrowserBaseUrls();
+  let lastError = null;
+
+  for (const baseUrl of baseUrls) {
+    if (signal?.aborted) throw new DOMException('Radio Browser request aborted', 'AbortError');
+    try {
+      const response = await fetch(`${baseUrl}${path}`, { signal });
+      if (!response.ok) throw new Error(`Radio Browser returned ${response.status}`);
+      return response.json();
+    } catch (fetchError) {
+      if (fetchError.name === 'AbortError') throw fetchError;
+      lastError = fetchError;
+    }
+  }
+
+  throw lastError || new Error('Radio Browser could not be reached');
+};
+
+const reportRadioStationClick = async (station) => {
+  const stationId = station?.stationuuid;
+  if (!stationId) return;
+
+  try {
+    const baseUrls = await getRadioBrowserBaseUrls();
+    for (const baseUrl of baseUrls) {
+      try {
+        const response = await fetch(`${baseUrl}/json/url/${encodeURIComponent(stationId)}`);
+        if (response.ok) return;
+      } catch {
+        // Try the next mirror.
+      }
+    }
+  } catch {
+    // Click reporting is best-effort and should never block playback.
+  }
+};
 
 const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
@@ -1336,9 +1418,7 @@ function RadioBrowserPanel({
       if (filters.bitrateMin) params.set('bitrateMin', filters.bitrateMin);
       if (filters.onlyWorking) params.set('hidebroken', 'true');
 
-      const response = await fetch(`${RADIO_BROWSER_BASE_URL}/json/stations/search?${params.toString()}`, { signal });
-      if (!response.ok) throw new Error(`Radio Browser returned ${response.status}`);
-      const data = await response.json();
+      const data = await fetchRadioBrowserJson(`/json/stations/search?${params.toString()}`, signal);
       const nextStations = data
         .map(normalizeRadioStation)
         .filter(Boolean)
@@ -2064,8 +2144,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     setRadioTrack(getRadioTrack(normalizedStation));
     setIsPlaying(true);
     setAudioError('');
-    fetch(`${RADIO_BROWSER_BASE_URL}/json/url/${encodeURIComponent(normalizedStation.stationuuid)}`)
-      .catch(() => {});
+    reportRadioStationClick(normalizedStation);
   }, []);
 
   const toggleSavedRadioStation = useCallback((station, setter) => {
