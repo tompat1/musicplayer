@@ -1025,8 +1025,8 @@ function StorageConsentModal() {
 
   return (
     <>
-      <button className="storage-console-trigger" type="button" onClick={() => setOpen(true)}>
-        PRIVACY
+      <button className="storage-console-trigger" type="button" onClick={() => setOpen(true)} aria-label="Open privacy settings">
+        <span aria-hidden="true">🍪</span>
       </button>
 
       {open && (
@@ -1352,6 +1352,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
   const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
+  const renderedPanelSizes = isMobile ? {} : panelSizes;
   const shellStyle = !isMinimized && !isMobile
     ? { gridTemplateColumns: `minmax(0, 1fr) ${librarySize.width}px` }
     : undefined;
@@ -1392,7 +1393,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [librarySize]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 760px)');
+    const mediaQuery = window.matchMedia('(max-width: 820px)');
     const syncMobileMode = () => {
       const matches = mediaQuery.matches;
       setIsMobile(matches);
@@ -2068,7 +2069,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               position={miniPosition}
               dragging={isDraggingMini}
               panelOffsets={renderedPanelOffsets}
-              panelSizes={panelSizes}
+              panelSizes={renderedPanelSizes}
               activePanel={activePanel}
               playlistOpen={miniPlaylistOpen}
               durations={durations}
