@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const SNAP_PX = 80;
 const PANEL_SNAP_PX = 34;
 const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
@@ -444,27 +443,6 @@ function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }
   );
 }
 
-function DockedMiniHandle({ side, playing, onRestore, onPrevious, onNext, onToggle }) {
-  const isVertical = side === 'left' || side === 'right';
-
-  return (
-    <aside className={`dock-handle dock-${side}`} data-playing={playing} aria-label="Docked miniplayer">
-      <button type="button" onClick={onPrevious} title="Previous track">
-        {isVertical ? 'UP' : 'PREV'}
-      </button>
-      <button className="dock-pulse" type="button" onClick={onToggle} title={playing ? 'Pause' : 'Play'}>
-        {Array.from({ length: 5 }, (_, index) => <span key={index} style={{ '--bar': index }} />)}
-      </button>
-      <button type="button" onClick={onRestore} title="Restore floating miniplayer">
-        OPEN
-      </button>
-      <button type="button" onClick={onNext} title="Next track">
-        {isVertical ? 'DN' : 'NEXT'}
-      </button>
-    </aside>
-  );
-}
-
 function WinampWindowBar({ title, children, quiet = false, onPointerDown, onPointerMove, onPointerUp }) {
   return (
     <div
@@ -684,7 +662,6 @@ function WinampMiniPlayer({
 
   return (
     <aside ref={playerRef} className="winamp-mini" data-skin="classic" style={style} aria-label="Floating Winamp miniplayer">
-      {dragging && <div className="dock-hint">Drag to edge to dock</div>}
       <section
         className="winamp-panel winamp-player-panel"
         style={playerStyle}
@@ -1218,7 +1195,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [isMinimized, setIsMinimized] = useState(true);
   const [durations, setDurations] = useState({});
   const [miniPosition, setMiniPosition] = useState(null);
-  const [docked, setDocked] = useState(null);
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
   const [visualMode, setVisualMode] = useState('candy');
@@ -1307,7 +1283,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       setIsMobile(matches);
       if (matches) {
         setIsMinimized(true);
-        setDocked(null);
         setMiniPosition(null);
       }
     };
@@ -1617,13 +1592,11 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const minimize = useCallback(() => {
     setIsMinimized(true);
-    setDocked(null);
   }, []);
 
   const restoreFullPlayer = useCallback(() => {
     if (isMobile) return;
     setIsMinimized(false);
-    setDocked(null);
   }, [isMobile]);
 
   useEffect(() => {
@@ -1702,7 +1675,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     miniDragging.current = true;
     setIsDraggingMini(true);
     setActivePanel('player');
-    setDocked(null);
   }, [hasDetachedPanels, isMobile]);
 
   const onMiniTitlePointerMove = useCallback((event) => {
@@ -1731,21 +1703,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     const height = dragElement?.offsetHeight || 190;
     const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
     const y = clamp(event.clientY - miniDragOffset.current.y, 0, window.innerHeight - height);
-    const edgeDistances = {
-      left: x,
-      right: window.innerWidth - (x + width),
-      top: y,
-      bottom: window.innerHeight - (y + height),
-    };
-    const closestSide = Object.entries(edgeDistances).sort((a, b) => a[1] - b[1])[0];
-
-    if (!isMobile && !hasDetachedPanels && closestSide[1] <= SNAP_PX) {
-      setDocked(closestSide[0]);
-      return;
-    }
-
     setMiniPosition({ x, y });
-  }, [hasDetachedPanels, isMobile]);
+  }, [hasDetachedPanels]);
 
   const onPanelPointerDown = useCallback((panel, event) => {
     if (isMobile) return;
@@ -1853,17 +1812,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               eqEnabled={eqEnabled}
             />
           )}
-          {docked ? (
-            <DockedMiniHandle
-              side={docked}
-              playing={isPlaying}
-              onRestore={() => setDocked(null)}
-              onPrevious={previous}
-              onNext={next}
-              onToggle={togglePlay}
-            />
-          ) : (
-            <WinampMiniPlayer
+          <WinampMiniPlayer
               track={currentTrack}
               tracks={tracks}
               currentIndex={trackIndex}
@@ -1916,7 +1865,6 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               playerRef={miniRef}
               canOpenFullPlayer={!isMobile}
             />
-          )}
         </>
       ) : (
         <>

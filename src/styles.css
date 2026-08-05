@@ -687,23 +687,6 @@ h1 {
   font-family: var(--mono);
 }
 
-.dock-hint {
-  position: absolute;
-  top: -36px;
-  left: 50%;
-  width: max-content;
-  padding: 8px 12px;
-  border: 1px solid rgba(0, 255, 65, 0.5);
-  border-radius: 4px;
-  color: var(--green);
-  background: rgba(8, 12, 8, 0.92);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.54);
-  font: 800 0.62rem/1 var(--mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  transform: translateX(-50%);
-}
-
 .winamp-titlebar {
   display: flex;
   align-items: center;
@@ -1068,95 +1051,6 @@ h1 {
   text-transform: uppercase;
 }
 
-.dock-handle {
-  position: fixed;
-  z-index: 31;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 7px;
-  border: 1px solid rgba(0, 255, 65, 0.32);
-  background: rgba(8, 12, 8, 0.9);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.58);
-  backdrop-filter: blur(18px);
-  touch-action: manipulation;
-}
-
-.dock-left,
-.dock-right {
-  top: 50%;
-  flex-direction: column;
-  transform: translateY(-50%);
-}
-
-.dock-left {
-  left: 0;
-  border-radius: 0 8px 8px 0;
-}
-
-.dock-right {
-  right: 0;
-  border-radius: 8px 0 0 8px;
-}
-
-.dock-top,
-.dock-bottom {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.dock-top {
-  top: 0;
-  border-radius: 0 0 8px 8px;
-}
-
-.dock-bottom {
-  bottom: 0;
-  border-radius: 8px 8px 0 0;
-}
-
-.dock-handle button {
-  min-height: 28px;
-  cursor: pointer;
-  border: 1px solid rgba(0, 255, 65, 0.2);
-  border-radius: 3px;
-  color: var(--amber);
-  background: rgba(0, 0, 0, 0.24);
-  font: 900 0.58rem/1 var(--mono);
-}
-
-.dock-pulse {
-  display: flex;
-  align-items: end;
-  gap: 3px;
-  min-width: 56px;
-  justify-content: center;
-}
-
-.dock-left .dock-pulse,
-.dock-right .dock-pulse {
-  min-width: 28px;
-  min-height: 64px;
-  flex-direction: column;
-  align-items: center;
-}
-
-.dock-pulse span {
-  display: block;
-  width: 5px;
-  height: calc(12px + var(--bar) * 4px);
-  border-radius: 999px;
-  background: rgba(0, 255, 65, 0.28);
-  pointer-events: none;
-}
-
-.dock-handle[data-playing="true"] .dock-pulse span {
-  background: linear-gradient(to top, var(--green), var(--acid));
-  box-shadow: 0 0 7px rgba(0, 255, 65, 0.7);
-  animation: dock-pulse 480ms ease-in-out calc(var(--bar) * 80ms) infinite alternate;
-}
-
 @keyframes winamp-marquee {
   from {
     transform: translateX(0);
@@ -1189,15 +1083,6 @@ h1 {
 @keyframes winamp-lcd-bar {
   to {
     height: calc(12% + ((var(--bar) * 23) % 72) * 1%);
-  }
-}
-
-@keyframes dock-pulse {
-  from {
-    transform: scaleY(0.35);
-  }
-  to {
-    transform: scaleY(1);
   }
 }
 
