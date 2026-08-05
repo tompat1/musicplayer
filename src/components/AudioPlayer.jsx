@@ -1268,6 +1268,7 @@ function RadioBrowserPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [source, setSource] = useState('results');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const favoriteStationSet = useMemo(() => new Set(favoriteStations.map(getStationId)), [favoriteStations]);
   const presetStationSet = useMemo(() => new Set(presetStations.map(getStationId)), [presetStations]);
   const savedStations = source === 'favorites' ? favoriteStations : presetStations;
@@ -1345,7 +1346,16 @@ function RadioBrowserPanel({
         ))}
       </div>
 
-      <div className="radio-filter-grid">
+      <button
+        className="radio-filter-toggle"
+        type="button"
+        aria-expanded={filtersOpen}
+        onClick={() => setFiltersOpen((open) => !open)}
+      >
+        {filtersOpen ? 'Hide filters' : 'Filters'}
+      </button>
+
+      <div className="radio-filter-grid" data-open={filtersOpen}>
         <label>
           <span>Country</span>
           <input

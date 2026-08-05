@@ -1430,6 +1430,7 @@ h1 {
 .library-mode-tabs button,
 .radio-source-tabs button,
 .radio-genre-chips button,
+.radio-filter-toggle,
 .radio-toolbar button,
 .radio-station-actions button {
   min-height: 32px;
@@ -1462,6 +1463,7 @@ h1 {
 .library-mode-tabs button:hover,
 .radio-source-tabs button:hover,
 .radio-genre-chips button:hover,
+.radio-filter-toggle:hover,
 .radio-toolbar button:hover,
 .radio-station-actions button:hover {
   color: #07100a;
@@ -1493,6 +1495,16 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.radio-filter-grid[data-open="false"] {
+  display: none;
+}
+
+.radio-filter-toggle {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0 10px;
 }
 
 .radio-filter-grid label {
@@ -3057,6 +3069,7 @@ h1 {
 
 .winamp-radio-wrap .radio-source-tabs button,
 .winamp-radio-wrap .radio-genre-chips button,
+.winamp-radio-wrap .radio-filter-toggle,
 .winamp-radio-wrap .radio-toolbar button,
 .winamp-radio-wrap .radio-station-actions button {
   min-height: 18px;
@@ -3082,6 +3095,7 @@ h1 {
 
 .winamp-radio-wrap .radio-source-tabs button:hover,
 .winamp-radio-wrap .radio-genre-chips button:hover,
+.winamp-radio-wrap .radio-filter-toggle:hover,
 .winamp-radio-wrap .radio-toolbar button:hover,
 .winamp-radio-wrap .radio-station-actions button:hover {
   color: #07100a;
@@ -3098,6 +3112,11 @@ h1 {
 .winamp-radio-wrap .radio-filter-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
+}
+
+.winamp-radio-wrap .radio-filter-toggle {
+  min-height: 18px;
+  padding: 1px 6px;
 }
 
 .winamp-radio-wrap .radio-filter-grid label:nth-child(1),
