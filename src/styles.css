@@ -1381,6 +1381,7 @@ h1 {
 .library-view {
   display: flex;
   min-width: 0;
+  position: relative;
   flex-direction: column;
   overflow: hidden;
 }
@@ -1437,6 +1438,34 @@ h1 {
   flex-direction: column;
   cursor: pointer;
   overflow-y: auto;
+}
+
+.panel-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  cursor: nwse-resize;
+  touch-action: none;
+  border: 0;
+  border-radius: 0;
+  background:
+    linear-gradient(135deg, transparent 0 48%, rgba(214, 255, 54, 0.86) 49% 54%, transparent 55%),
+    linear-gradient(135deg, transparent 0 66%, rgba(88, 215, 255, 0.76) 67% 72%, transparent 73%),
+    linear-gradient(135deg, transparent 0 82%, rgba(242, 255, 244, 0.7) 83% 88%, transparent 89%);
+  box-shadow: none;
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle:active {
+  background:
+    linear-gradient(135deg, transparent 0 48%, #d6ff36 49% 54%, transparent 55%),
+    linear-gradient(135deg, transparent 0 66%, #58d7ff 67% 72%, transparent 73%),
+    linear-gradient(135deg, transparent 0 82%, #f2fff4 83% 88%, transparent 89%);
 }
 
 .track-list:active {
@@ -2586,6 +2615,8 @@ h1 {
 
 .winamp-playlist-panel {
   display: flex;
+  min-height: 0;
+  position: relative;
   flex-direction: column;
 }
 
@@ -2618,8 +2649,11 @@ h1 {
 }
 
 .winamp-songlist {
-  max-height: 236px;
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
   padding: 5px 0;
+  overflow-y: auto;
   background: #020403;
   scrollbar-color: #d8c77a #11131d;
 }
@@ -2778,6 +2812,10 @@ h1 {
   }
 
   .winamp-panel-drag-handle {
+    display: none;
+  }
+
+  .panel-resize-handle {
     display: none;
   }
 

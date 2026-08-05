@@ -21,9 +21,15 @@ const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
+const LIBRARY_SIZE_STORAGE_KEY = 'rynell-player-library-size';
 const STORAGE_CONSENT_KEY = 'rynell-player-storage-consent';
 const playerBrand = 'RYNELL PLAYER';
 const EMPTY_PANEL_OFFSETS = { eq: null, playlist: null };
+const DEFAULT_LIBRARY_SIZE = { width: 420, height: null };
+const MIN_LIBRARY_WIDTH = 360;
+const MIN_LIBRARY_HEIGHT = 420;
+const MIN_PLAYLIST_WIDTH = 260;
+const MIN_PLAYLIST_HEIGHT = 190;
 const STORAGE_CONSENT_VERSION = 1;
 const DEFAULT_STORAGE_CONSENT = {
   version: STORAGE_CONSENT_VERSION,
@@ -496,6 +502,21 @@ function PanelDragHandle({ panel, label, onPointerDown, onPointerMove, onPointer
   );
 }
 
+function ResizeHandle({ label, onPointerDown, onPointerMove, onPointerUp }) {
+  return (
+    <button
+      type="button"
+      className="panel-resize-handle"
+      aria-label={`Resize ${label}`}
+      title={`Resize ${label}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    />
+  );
+}
+
 function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
@@ -603,6 +624,9 @@ function WinampMiniPlayer({
   onPanelPointerDown,
   onPanelPointerMove,
   onPanelPointerUp,
+  onPanelResizePointerDown,
+  onPanelResizePointerMove,
+  onPanelResizePointerUp,
   playerRef,
   canOpenFullPlayer,
 }) {
@@ -888,9 +912,15 @@ function WinampMiniPlayer({
           )}
         </div>
 
-        <div className="winamp-playlist-footer">
-          <strong>{formatTime(currentTime)}/{durationLabel}</strong>
-        </div>
+        <div className="winamp-playlist-footer" />
+        {canOpenFullPlayer && (
+          <ResizeHandle
+            label="playlist"
+            onPointerDown={(event) => onPanelResizePointerDown('playlist', event)}
+            onPointerMove={onPanelResizePointerMove}
+            onPointerUp={onPanelResizePointerUp}
+          />
+        )}
         </section>
       </div>
     </aside>
@@ -1077,6 +1107,11 @@ function Playlist({
   onToggleFavorite,
   liveDuration,
   durations,
+  style,
+  resizable,
+  onResizePointerDown,
+  onResizePointerMove,
+  onResizePointerUp,
 }) {
   const filteredTracks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -1096,7 +1131,7 @@ function Playlist({
   }, [tracks, query]);
 
   return (
-    <aside className="library-view" aria-label="Library playlist">
+    <aside className="library-view" style={style} aria-label="Library playlist">
       <div className="library-header">
         <div>
           <p className="eyebrow">Library</p>
@@ -1172,6 +1207,14 @@ function Playlist({
           })
         )}
       </div>
+      {resizable && (
+        <ResizeHandle
+          label="library"
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+        />
+      )}
     </aside>
   );
 }
@@ -1199,6 +1242,15 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
   const [visualMode, setVisualMode] = useState('candy');
   const [isMobile, setIsMobile] = useState(false);
+  const [librarySize, setLibrarySize] = useState(() => {
+    const storedSize = readLocalStorageJson(LIBRARY_SIZE_STORAGE_KEY, DEFAULT_LIBRARY_SIZE);
+    const width = Number(storedSize.width);
+    const height = Number(storedSize.height);
+    return {
+      width: Number.isFinite(width) ? clamp(width, MIN_LIBRARY_WIDTH, 720) : DEFAULT_LIBRARY_SIZE.width,
+      height: Number.isFinite(height) ? Math.max(MIN_LIBRARY_HEIGHT, height) : DEFAULT_LIBRARY_SIZE.height,
+    };
+  });
   const [panelOffsets, setPanelOffsets] = useState(() => {
     const storedPositions = readLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, {});
     const normalizePanelPosition = (position) => {
@@ -1232,6 +1284,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const miniDragging = useRef(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
   const panelDragging = useRef(null);
+  const panelResizing = useRef(null);
+  const libraryResizing = useRef(null);
   const shuffleQueue = useRef([]);
   const deletedTrackSet = useMemo(() => new Set(deletedTracks), [deletedTracks]);
   const favoriteTrackSet = useMemo(() => new Set(favoriteTracks), [favoriteTracks]);
@@ -1251,6 +1305,12 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
   const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
+  const shellStyle = !isMinimized && !isMobile
+    ? { gridTemplateColumns: `minmax(0, 1fr) ${librarySize.width}px` }
+    : undefined;
+  const libraryStyle = !isMobile
+    ? { height: librarySize.height ? `${librarySize.height}px` : undefined }
+    : undefined;
 
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
@@ -1275,6 +1335,10 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   useEffect(() => {
     writeLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, panelOffsets);
   }, [panelOffsets]);
+
+  useEffect(() => {
+    writeLocalStorageJson(LIBRARY_SIZE_STORAGE_KEY, librarySize);
+  }, [librarySize]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 760px)');
@@ -1781,12 +1845,114 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     }
   }, []);
 
+  const onPanelResizePointerDown = useCallback((panel, event) => {
+    if (isMobile) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const panelElement = event.currentTarget.closest('.winamp-panel');
+    const rect = panelElement?.getBoundingClientRect();
+    if (!rect) return;
+    const origin = panelOffsets[panel] || {
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    panelResizing.current = {
+      panel,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin,
+    };
+    setPanelOffsets((offsets) => ({
+      ...offsets,
+      [panel]: origin,
+    }));
+    setActivePanel(panel);
+  }, [isMobile, panelOffsets]);
+
+  const onPanelResizePointerMove = useCallback((event) => {
+    const resize = panelResizing.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const maxWidth = Math.max(MIN_PLAYLIST_WIDTH, window.innerWidth - resize.origin.x);
+    const maxHeight = Math.max(MIN_PLAYLIST_HEIGHT, window.innerHeight - resize.origin.y);
+    setPanelOffsets((offsets) => ({
+      ...offsets,
+      [resize.panel]: {
+        ...resize.origin,
+        width: clamp(resize.origin.width + event.clientX - resize.startX, MIN_PLAYLIST_WIDTH, maxWidth),
+        height: clamp(resize.origin.height + event.clientY - resize.startY, MIN_PLAYLIST_HEIGHT, maxHeight),
+      },
+    }));
+  }, []);
+
+  const onPanelResizePointerUp = useCallback((event) => {
+    const resize = panelResizing.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panelResizing.current = null;
+    setActivePanel('');
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
+
+  const onLibraryResizePointerDown = useCallback((event) => {
+    if (isMobile) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = event.currentTarget.closest('.library-view')?.getBoundingClientRect();
+    if (!rect) return;
+    libraryResizing.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: {
+        width: rect.width,
+        height: rect.height,
+      },
+    };
+  }, [isMobile]);
+
+  const onLibraryResizePointerMove = useCallback((event) => {
+    const resize = libraryResizing.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const shellWidth = document.querySelector('.player-shell:not(.is-minimized)')?.getBoundingClientRect().width || window.innerWidth;
+    const maxWidth = Math.max(MIN_LIBRARY_WIDTH, Math.min(720, shellWidth - 420));
+    const maxHeight = Math.max(MIN_LIBRARY_HEIGHT, window.innerHeight - 36);
+    setLibrarySize({
+      width: clamp(resize.origin.width + event.clientX - resize.startX, MIN_LIBRARY_WIDTH, maxWidth),
+      height: clamp(resize.origin.height + event.clientY - resize.startY, MIN_LIBRARY_HEIGHT, maxHeight),
+    });
+  }, []);
+
+  const onLibraryResizePointerUp = useCallback((event) => {
+    const resize = libraryResizing.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    libraryResizing.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
+
   const durationProbes = tracks.map((track) => (
     <DurationProbe key={track.filename} track={track} onDuration={setTrackDuration} />
   ));
 
   return (
-    <main className={`player-shell${isMinimized ? ' is-minimized' : ''}`}>
+    <main className={`player-shell${isMinimized ? ' is-minimized' : ''}`} style={shellStyle}>
       {currentTrack && (
         <audio
           ref={audioRef}
@@ -1862,6 +2028,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onPanelPointerDown={onPanelPointerDown}
               onPanelPointerMove={onPanelPointerMove}
               onPanelPointerUp={onPanelPointerUp}
+              onPanelResizePointerDown={onPanelResizePointerDown}
+              onPanelResizePointerMove={onPanelResizePointerMove}
+              onPanelResizePointerUp={onPanelResizePointerUp}
               playerRef={miniRef}
               canOpenFullPlayer={!isMobile}
             />
@@ -1963,6 +2132,11 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         onToggleFavorite={toggleFavorite}
         liveDuration={duration}
         durations={durations}
+        style={libraryStyle}
+        resizable={!isMobile}
+        onResizePointerDown={onLibraryResizePointerDown}
+        onResizePointerMove={onLibraryResizePointerMove}
+        onResizePointerUp={onLibraryResizePointerUp}
       />
         </>
       )}
