@@ -449,10 +449,21 @@ function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }
   );
 }
 
-function WinampWindowBar({ title, children, quiet = false, onPointerDown, onPointerMove, onPointerUp }) {
+function WinampWindowBar({
+  title,
+  children,
+  quiet = false,
+  hint,
+  onDoubleClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}) {
   return (
     <div
       className={`winamp-window-bar${quiet ? ' is-quiet' : ''}`}
+      title={hint}
+      onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -480,13 +491,14 @@ function WinampLedButton({ active, children, className = '', ...props }) {
   );
 }
 
-function PanelDragHandle({ panel, label, onPointerDown, onPointerMove, onPointerUp }) {
+function PanelDragHandle({ panel, label, detached = false, onPointerDown, onPointerMove, onPointerUp }) {
+  const hint = detached ? `Drag ${label}. Double-click title bar to reattach.` : `Drag ${label} to detach.`;
   return (
     <button
       type="button"
       className="winamp-panel-drag-handle"
       aria-label={`Move ${label}`}
-      title={`Move ${label}`}
+      title={hint}
       onPointerDown={(event) => (panel ? onPointerDown(panel, event) : onPointerDown(event))}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -624,6 +636,7 @@ function WinampMiniPlayer({
   onPanelPointerDown,
   onPanelPointerMove,
   onPanelPointerUp,
+  onPanelReattach,
   onPanelResizePointerDown,
   onPanelResizePointerMove,
   onPanelResizePointerUp,
@@ -778,12 +791,15 @@ function WinampMiniPlayer({
           <PanelDragHandle
             panel="eq"
             label="equalizer"
+            detached={canOpenFullPlayer && isPanelDetached(panelOffsets.eq)}
             onPointerDown={onPanelPointerDown}
             onPointerMove={onPanelPointerMove}
             onPointerUp={onPanelPointerUp}
           />
           <WinampWindowBar
             title="RYNELL EQUALIZER"
+            hint={isPanelDetached(panelOffsets.eq) ? 'Drag to move. Double-click to reattach equalizer.' : 'Drag to detach equalizer.'}
+            onDoubleClick={() => onPanelReattach('eq')}
             onPointerDown={(event) => onPanelPointerDown('eq', event)}
             onPointerMove={onPanelPointerMove}
             onPointerUp={onPanelPointerUp}
@@ -843,12 +859,15 @@ function WinampMiniPlayer({
           <PanelDragHandle
             panel="playlist"
             label="playlist"
+            detached={canOpenFullPlayer && isPanelDetached(panelOffsets.playlist)}
             onPointerDown={onPanelPointerDown}
             onPointerMove={onPanelPointerMove}
             onPointerUp={onPanelPointerUp}
           />
           <WinampWindowBar
             title="RYNELL PLAYLIST"
+            hint={isPanelDetached(panelOffsets.playlist) ? 'Drag to move. Double-click to reattach playlist.' : 'Drag to detach playlist.'}
+            onDoubleClick={() => onPanelReattach('playlist')}
             onPointerDown={(event) => onPanelPointerDown('playlist', event)}
             onPointerMove={onPanelPointerMove}
             onPointerUp={onPanelPointerUp}
@@ -1845,6 +1864,17 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     }
   }, []);
 
+  const onPanelReattach = useCallback((panel) => {
+    if (isMobile) return;
+    panelDragging.current = null;
+    panelResizing.current = null;
+    setActivePanel('');
+    setPanelOffsets((offsets) => ({
+      ...offsets,
+      [panel]: null,
+    }));
+  }, [isMobile]);
+
   const onPanelResizePointerDown = useCallback((panel, event) => {
     if (isMobile) return;
     event.preventDefault();
@@ -2028,6 +2058,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onPanelPointerDown={onPanelPointerDown}
               onPanelPointerMove={onPanelPointerMove}
               onPanelPointerUp={onPanelPointerUp}
+              onPanelReattach={onPanelReattach}
               onPanelResizePointerDown={onPanelResizePointerDown}
               onPanelResizePointerMove={onPanelResizePointerMove}
               onPanelResizePointerUp={onPanelResizePointerUp}
