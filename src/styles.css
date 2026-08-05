@@ -2627,6 +2627,16 @@ h1 {
   will-change: transform;
 }
 
+.winamp-now-playing-detail {
+  min-height: 12px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #8edc9c;
+  font: 900 0.46rem/1.15 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .winamp-tech-row {
   display: grid;
   grid-template-columns: repeat(4, max-content);

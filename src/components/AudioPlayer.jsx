@@ -151,6 +151,49 @@ const getLibraryTitle = (track) => {
 
 const getTrackTitle = (track) => getLibraryTitle(track) || track?.title || 'No Tracks Loaded';
 
+const cleanDisplayText = (value) => String(value || '').trim();
+
+const getNowPlayingInfo = (track) => {
+  if (!track) return { title: 'No Tracks Loaded', artist: '', context: '' };
+
+  if (track.source === 'radio-browser') {
+    const station = track.radioStation || {};
+    const title = cleanDisplayText(
+      track.nowPlayingTitle
+      || track.nowPlaying
+      || station.nowPlayingTitle
+      || station.nowPlaying
+      || station.currentTrack
+      || station.title
+      || station.name,
+    );
+    const artist = cleanDisplayText(
+      track.nowPlayingArtist
+      || station.nowPlayingArtist
+      || station.artist,
+    );
+    const stationName = cleanDisplayText(station.name || track.title);
+    const region = [station.country, station.language].map(cleanDisplayText).filter(Boolean).join(' / ');
+
+    return {
+      title: title || stationName || 'Internet Radio',
+      artist,
+      context: title && title !== stationName ? stationName : region,
+    };
+  }
+
+  const title = cleanDisplayText(track.displayTitle || track.title || getTrackTitle(track));
+  return {
+    title: title || 'No Tracks Loaded',
+    artist: cleanDisplayText(track.artist),
+    context: cleanDisplayText(track.mix || track.version),
+  };
+};
+
+const getNowPlayingSubtitle = (info) => (
+  [info?.artist, info?.context].map(cleanDisplayText).filter(Boolean).join(' / ')
+);
+
 const getLibraryDetails = (track) => {
   if (track?.source === 'radio-browser') {
     return [track?.format, track?.bitrate && `${track.bitrate} kbps`, track?.artist, track?.mix].filter(Boolean).join(' / ');
@@ -765,7 +808,9 @@ function WinampMiniPlayer({
   };
   const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
   const format = track?.format || 'AUDIO';
-  const trackTitle = getTrackTitle(track).toUpperCase();
+  const nowPlayingInfo = getNowPlayingInfo(track);
+  const trackTitle = nowPlayingInfo.title.toUpperCase();
+  const trackSubtitle = getNowPlayingSubtitle(nowPlayingInfo).toUpperCase();
   const marqueeRef = useRef(null);
   const marqueeTextRef = useRef(null);
   const [titleOverflowing, setTitleOverflowing] = useState(false);
@@ -840,6 +885,7 @@ function WinampMiniPlayer({
             <div className="winamp-marquee" ref={marqueeRef} data-overflowing={titleOverflowing}>
               <span ref={marqueeTextRef} data-overflowing={titleOverflowing}>{trackTitle}</span>
             </div>
+            {trackSubtitle && <div className="winamp-now-playing-detail">{trackSubtitle}</div>}
             <div className="winamp-tech-row">
               <span>{bitrate} kbps</span>
               <span>{format}</span>
@@ -1703,6 +1749,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const hasTracks = tracks.length > 0;
   const currentTrack = radioTrack || (hasTracks ? tracks[trackIndex] : null);
   const hasPlayableTrack = Boolean(currentTrack);
+  const currentNowPlaying = useMemo(() => getNowPlayingInfo(currentTrack), [currentTrack]);
+  const currentNowPlayingSubtitle = useMemo(() => getNowPlayingSubtitle(currentNowPlaying), [currentNowPlaying]);
   const currentRadioStationId = currentTrack?.source === 'radio-browser' ? currentTrack.radioStation?.stationuuid : '';
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
   const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
@@ -1733,6 +1781,22 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     if (!currentTrack?.filename || currentTrack.source === 'radio-browser') return;
     writeLocalStorageJson(LAST_TRACK_STORAGE_KEY, { filename: currentTrack.filename });
   }, [currentTrack]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || typeof window.MediaMetadata !== 'function') return;
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+
+    const artwork = currentTrack.cover ? [{ src: currentTrack.cover }] : [];
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: currentNowPlaying.title,
+      artist: currentNowPlaying.artist || currentNowPlaying.context || '',
+      album: currentTrack.source === 'radio-browser' ? 'Internet Radio' : 'Musicplayer',
+      artwork,
+    });
+  }, [currentNowPlaying, currentTrack]);
 
   useEffect(() => {
     writeLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, panelOffsets);
@@ -2558,8 +2622,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
             </div>
 
             <div className="title-stack">
-              <h2>{getTrackTitle(currentTrack)}</h2>
-              <p>{currentTrack?.artist || currentTrack?.filename || 'Add audio files to the catalog.'}</p>
+              <h2>{currentNowPlaying.title}</h2>
+              <p>{currentNowPlayingSubtitle || currentTrack?.filename || 'Add audio files to the catalog.'}</p>
             </div>
 
             <TrackMeta track={currentTrack} liveDuration={duration} />
