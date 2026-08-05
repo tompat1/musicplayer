@@ -464,6 +464,7 @@ function WinampWindowBar({
     <div
       className={`winamp-window-bar${quiet ? ' is-quiet' : ''}`}
       title={hint}
+      data-tooltip={hint}
       onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -500,6 +501,7 @@ function PanelDragHandle({ panel, label, detached = false, onPointerDown, onPoin
       className="winamp-panel-drag-handle"
       aria-label={`Move ${label}`}
       title={hint}
+      data-tooltip={hint}
       onPointerDown={(event) => (panel ? onPointerDown(panel, event) : onPointerDown(event))}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -523,6 +525,7 @@ function ResizeHandle({ label, axis = 'both', onPointerDown, onPointerMove, onPo
       data-axis={axis}
       aria-label={`Resize ${label}`}
       title={`Resize ${label}`}
+      data-tooltip={`Resize ${label}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
