@@ -18,6 +18,8 @@ const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
 const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
 const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
 const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
+const FAVORITE_RADIO_STATIONS_STORAGE_KEY = 'rynell-player-favorite-radio-stations';
+const RADIO_PRESETS_STORAGE_KEY = 'rynell-player-radio-presets';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
@@ -31,6 +33,19 @@ const MIN_LIBRARY_WIDTH = 360;
 const MIN_LIBRARY_HEIGHT = 420;
 const MIN_PLAYLIST_WIDTH = 260;
 const MIN_PLAYLIST_HEIGHT = 190;
+const RADIO_BROWSER_BASE_URL = 'https://de1.api.radio-browser.info';
+const RADIO_GENRES = ['electronica', 'rock', 'pop', '60s', '70s', '80s', '90s', 'jazz', 'ambient', 'house', 'techno', 'disco', 'funk', 'soul', 'classical'];
+const RADIO_SORT_OPTIONS = ['votes', 'clickcount', 'clicktrend', 'bitrate', 'random'];
+const RADIO_CODEC_OPTIONS = ['', 'MP3', 'AAC', 'OGG', 'OPUS', 'HLS'];
+const RADIO_DEFAULT_FILTERS = {
+  genre: 'electronica',
+  country: '',
+  language: '',
+  codec: '',
+  bitrateMin: '',
+  onlyWorking: true,
+  sort: 'votes',
+};
 const STORAGE_CONSENT_VERSION = 1;
 const DEFAULT_STORAGE_CONSENT = {
   version: STORAGE_CONSENT_VERSION,
@@ -67,6 +82,55 @@ const sortFavoritesFirst = (items, getTrack = (item) => item) => (
 
 const isPanelDetached = (position) => Boolean(position);
 
+const getStationId = (station) => station?.stationuuid || station?.id || station?.url_resolved || station?.url || station?.name;
+
+const normalizeRadioStation = (station) => {
+  if (!station) return null;
+  const url = station.url_resolved || station.url;
+  if (!url) return null;
+  const stationuuid = getStationId(station);
+  return {
+    stationuuid,
+    name: station.name || 'Unknown station',
+    url,
+    homepage: station.homepage || '',
+    favicon: station.favicon || '',
+    tags: station.tags || '',
+    country: station.country || station.countrycode || '',
+    language: station.language || '',
+    codec: (station.codec || 'RADIO').toUpperCase(),
+    bitrate: Number(station.bitrate) || 0,
+    votes: Number(station.votes) || 0,
+    clickcount: Number(station.clickcount) || 0,
+    clicktrend: Number(station.clicktrend) || 0,
+    lastcheckok: Number(station.lastcheckok) === 1,
+  };
+};
+
+const getRadioTrack = (station) => ({
+  filename: `radio:${station.stationuuid}`,
+  src: station.url,
+  source: 'radio-browser',
+  title: station.name,
+  displayTitle: station.name,
+  artist: station.country || station.language || 'Internet Radio',
+  mix: station.tags,
+  version: '',
+  format: station.codec || 'RADIO',
+  duration: 'LIVE',
+  bitrate: station.bitrate || 'NET',
+  key: station.country || '',
+  cover: station.favicon || '',
+  radioStation: station,
+});
+
+const getStationTagList = (station) => (
+  String(station?.tags || '')
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+);
+
 const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
   return liveDuration ? formatTime(liveDuration) : '--:--';
@@ -89,6 +153,9 @@ const getLibraryTitle = (track) => {
 const getTrackTitle = (track) => getLibraryTitle(track) || track?.title || 'No Tracks Loaded';
 
 const getLibraryDetails = (track) => {
+  if (track?.source === 'radio-browser') {
+    return [track?.format, track?.bitrate && `${track.bitrate} kbps`, track?.artist, track?.mix].filter(Boolean).join(' / ');
+  }
   const source = track?.source === 'google-flow' ? 'Google Flow' : track?.filename;
   return [source, track?.key, track?.bpm && `${track.bpm} BPM`].filter(Boolean).join(' / ');
 };
@@ -538,7 +605,7 @@ function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
 
-function WinampLcdSpectrum({ audioRef, playing, eqGains, eqEnabled }) {
+function WinampLcdSpectrum({ audioRef, playing, eqGains, eqEnabled, analyzable = true }) {
   const [levels, setLevels] = useState(() => Array.from({ length: 18 }, () => 14));
 
   useEffect(() => {
@@ -573,14 +640,14 @@ function WinampLcdSpectrum({ audioRef, playing, eqGains, eqEnabled }) {
       draw();
     };
 
-    if (playing) start();
+    if (playing && analyzable) start();
     else drawIdle();
 
     return () => {
       cancelled = true;
       cancelAnimationFrame(frameId);
     };
-  }, [audioRef, playing, eqEnabled, eqGains]);
+  }, [audioRef, playing, eqEnabled, eqGains, analyzable]);
 
   return (
     <div className="winamp-lcd-bars" aria-hidden="true">
@@ -646,6 +713,7 @@ function WinampMiniPlayer({
   onPanelResizePointerDown,
   onPanelResizePointerMove,
   onPanelResizePointerUp,
+  radioProps,
   playerRef,
   canOpenFullPlayer,
 }) {
@@ -685,6 +753,7 @@ function WinampMiniPlayer({
   const marqueeRef = useRef(null);
   const marqueeTextRef = useRef(null);
   const [titleOverflowing, setTitleOverflowing] = useState(false);
+  const [playlistView, setPlaylistView] = useState('playlist');
   const playlistTracks = useMemo(() => (
     sortFavoritesFirst(tracks.map((playlistTrack, index) => ({ playlistTrack, index })), (item) => item.playlistTrack)
   ), [tracks]);
@@ -742,7 +811,13 @@ function WinampMiniPlayer({
           <div className="winamp-time-display">
             <span className="winamp-play-indicator">{playing ? '>' : '||'}</span>
             <strong>{formatTime(currentTime)}</strong>
-            <WinampLcdSpectrum audioRef={audioRef} playing={playing} eqGains={eqGains} eqEnabled={eqEnabled} />
+            <WinampLcdSpectrum
+              audioRef={audioRef}
+              playing={playing}
+              eqGains={eqGains}
+              eqEnabled={eqEnabled}
+              analyzable={track?.source !== 'radio-browser'}
+            />
           </div>
 
           <div className="winamp-track-display">
@@ -835,6 +910,19 @@ function WinampMiniPlayer({
           </select>
           <button type="button" onClick={onEqPresetSave}>SAVE</button>
         </WinampWindowBar>
+        <div className="winamp-vis-row winamp-eq-vis-row" aria-label="Visualizer mode">
+          <span>VISUALS</span>
+          {['candy', 'bars', 'wave', 'idle'].map((mode) => (
+            <button
+              type="button"
+              key={mode}
+              data-active={visualMode === mode}
+              onClick={() => onVisualModeChange(mode)}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
         <div className="winamp-eq-body" data-open={eqPanelOpen}>
           <div className="winamp-preamp">
             <span>PREAMP</span>
@@ -885,20 +973,20 @@ function WinampMiniPlayer({
           <WinampLedButton active={playlistOpen} onClick={onTogglePlaylist} aria-expanded={playlistOpen}>PL</WinampLedButton>
         </WinampWindowBar>
 
-        <div className="winamp-vis-row" aria-label="Visualizer mode">
-          <span>VISUALS</span>
-          {['candy', 'bars', 'wave', 'idle'].map((mode) => (
-            <button
-              type="button"
-              key={mode}
-              data-active={visualMode === mode}
-              onClick={() => onVisualModeChange(mode)}
-            >
-              {mode}
-            </button>
-          ))}
+        <div className="winamp-playlist-tabs" aria-label="Playlist mode">
+          <button type="button" data-active={playlistView === 'playlist'} onClick={() => setPlaylistView('playlist')}>
+            PLAYLIST
+          </button>
+          <button type="button" data-active={playlistView === 'radio'} onClick={() => setPlaylistView('radio')}>
+            RADIO
+          </button>
         </div>
 
+        {playlistView === 'radio' ? (
+          <div className="winamp-radio-wrap" data-open={playlistOpen}>
+            <RadioBrowserPanel {...radioProps} />
+          </div>
+        ) : (
         <div className="winamp-songlist" role="list" data-open={playlistOpen}>
           {tracks.length === 0 ? (
             <div className="winamp-empty">Drop tracks into /public/assets/audio</div>
@@ -940,6 +1028,7 @@ function WinampMiniPlayer({
             })
           )}
         </div>
+        )}
 
         <div className="winamp-playlist-footer" />
         {canOpenFullPlayer && (
@@ -958,6 +1047,29 @@ function WinampMiniPlayer({
 }
 
 function TrackMeta({ track, liveDuration }) {
+  if (track?.source === 'radio-browser') {
+    const station = track.radioStation;
+    const meta = [
+      ['Source', 'Radio Browser'],
+      ['Codec', station?.codec],
+      ['Bitrate', station?.bitrate && `${station.bitrate} kbps`],
+      ['Country', station?.country],
+      ['Language', station?.language],
+      ['Tags', getStationTagList(station).slice(0, 3).join(', ')],
+    ].filter(([, value]) => value);
+
+    return (
+      <div className="metadata-grid">
+        {meta.map(([label, value]) => (
+          <div className="metadata-cell" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const meta = [
     ['Source', track?.source === 'google-flow' ? 'Google Flow' : 'Local'],
     ['Mix', track?.mix],
@@ -1125,6 +1237,214 @@ function StorageConsentModal() {
   );
 }
 
+function RadioBrowserPanel({
+  activeStationId,
+  favoriteStations,
+  presetStations,
+  playing,
+  onPlayStation,
+  onToggleFavoriteStation,
+  onTogglePresetStation,
+}) {
+  const [filters, setFilters] = useState(RADIO_DEFAULT_FILTERS);
+  const [stations, setStations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [source, setSource] = useState('results');
+  const favoriteStationSet = useMemo(() => new Set(favoriteStations.map(getStationId)), [favoriteStations]);
+  const presetStationSet = useMemo(() => new Set(presetStations.map(getStationId)), [presetStations]);
+  const savedStations = source === 'favorites' ? favoriteStations : presetStations;
+  const visibleStations = source === 'results' ? stations : savedStations;
+
+  const updateFilter = (key, value) => {
+    setSource('results');
+    setFilters((currentFilters) => ({ ...currentFilters, [key]: value }));
+  };
+
+  const searchStations = useCallback(async (signal) => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({
+        limit: '48',
+        order: filters.sort,
+      });
+      if (filters.sort !== 'random') params.set('reverse', 'true');
+      if (filters.genre) params.set('tag', filters.genre);
+      if (filters.country.trim()) params.set('country', filters.country.trim());
+      if (filters.language.trim()) params.set('language', filters.language.trim());
+      if (filters.codec) params.set('codec', filters.codec);
+      if (filters.bitrateMin) params.set('bitrateMin', filters.bitrateMin);
+      if (filters.onlyWorking) params.set('hidebroken', 'true');
+
+      const response = await fetch(`${RADIO_BROWSER_BASE_URL}/json/stations/search?${params.toString()}`, { signal });
+      if (!response.ok) throw new Error(`Radio Browser returned ${response.status}`);
+      const data = await response.json();
+      const nextStations = data
+        .map(normalizeRadioStation)
+        .filter(Boolean)
+        .filter((station) => station.url.startsWith('http'))
+        .filter((station, index, allStations) => allStations.findIndex((item) => item.stationuuid === station.stationuuid) === index);
+      setStations(nextStations);
+    } catch (fetchError) {
+      if (fetchError.name !== 'AbortError') {
+        setError('Radio Browser could not be reached. Try another filter or refresh.');
+      }
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    searchStations(controller.signal);
+    return () => controller.abort();
+  }, [searchStations]);
+
+  return (
+    <section className="radio-browser-panel" aria-label="Internet radio browser">
+      <div className="radio-source-tabs" aria-label="Radio station source">
+        {[
+          ['results', `Results ${stations.length}`],
+          ['favorites', `Favorites ${favoriteStations.length}`],
+          ['presets', `Presets ${presetStations.length}`],
+        ].map(([value, label]) => (
+          <button key={value} type="button" data-active={source === value} onClick={() => setSource(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="radio-genre-chips" aria-label="Genre filters">
+        {RADIO_GENRES.map((genre) => (
+          <button
+            key={genre}
+            type="button"
+            data-active={filters.genre === genre}
+            onClick={() => updateFilter('genre', genre)}
+          >
+            {genre}
+          </button>
+        ))}
+      </div>
+
+      <div className="radio-filter-grid">
+        <label>
+          <span>Country</span>
+          <input
+            type="search"
+            value={filters.country}
+            onChange={(event) => updateFilter('country', event.target.value)}
+            placeholder="US, Germany, Sweden"
+          />
+        </label>
+        <label>
+          <span>Language</span>
+          <input
+            type="search"
+            value={filters.language}
+            onChange={(event) => updateFilter('language', event.target.value)}
+            placeholder="english"
+          />
+        </label>
+        <label>
+          <span>Codec</span>
+          <select value={filters.codec} onChange={(event) => updateFilter('codec', event.target.value)}>
+            {RADIO_CODEC_OPTIONS.map((codec) => (
+              <option key={codec || 'any'} value={codec}>{codec || 'Any'}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Min kbps</span>
+          <input
+            type="number"
+            min="0"
+            step="16"
+            value={filters.bitrateMin}
+            onChange={(event) => updateFilter('bitrateMin', event.target.value)}
+            placeholder="128"
+          />
+        </label>
+        <label>
+          <span>Sort</span>
+          <select value={filters.sort} onChange={(event) => updateFilter('sort', event.target.value)}>
+            {RADIO_SORT_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <label className="radio-check">
+          <input
+            type="checkbox"
+            checked={filters.onlyWorking}
+            onChange={(event) => updateFilter('onlyWorking', event.target.checked)}
+          />
+          <span>Working only</span>
+        </label>
+      </div>
+
+      <div className="radio-toolbar">
+        <button type="button" onClick={() => searchStations()}>Refresh</button>
+        {loading && <span>Scanning directory...</span>}
+        {error && <span role="status">{error}</span>}
+      </div>
+
+      <div className="radio-station-list" role="list">
+        {visibleStations.length === 0 && (
+          <div className="empty-state">
+            {source === 'results' ? 'No stations found.' : 'No saved stations yet.'}
+          </div>
+        )}
+        {visibleStations.map((station) => {
+          const stationId = getStationId(station);
+          const tags = getStationTagList(station).slice(0, 4);
+          const active = activeStationId === stationId;
+          return (
+            <article className="radio-station-row" key={stationId} role="listitem" data-active={active}>
+              <button className="radio-station-main" type="button" onClick={() => onPlayStation(station)}>
+                <span className="radio-favicon">
+                  {station.favicon ? <img src={station.favicon} alt="" loading="lazy" /> : station.name.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="radio-station-copy">
+                  <strong>{station.name}</strong>
+                  <small>{[station.country, station.language].filter(Boolean).join(' / ') || 'Internet radio'}</small>
+                  <span className="radio-tag-row">
+                    {tags.length ? tags.map((tag) => <i key={tag}>{tag}</i>) : <i>untagged</i>}
+                  </span>
+                </span>
+                <span className="radio-stats">
+                  <strong>{station.codec}</strong>
+                  <small>{station.bitrate ? `${station.bitrate} kbps` : 'live'}</small>
+                </span>
+              </button>
+              <span className="radio-station-actions">
+                <button type="button" onClick={() => onPlayStation(station)} data-active={active && playing}>
+                  {active && playing ? 'ON AIR' : 'PLAY'}
+                </button>
+                <button
+                  type="button"
+                  data-active={favoriteStationSet.has(stationId)}
+                  onClick={() => onToggleFavoriteStation(station)}
+                >
+                  FAV
+                </button>
+                <button
+                  type="button"
+                  data-active={presetStationSet.has(stationId)}
+                  onClick={() => onTogglePresetStation(station)}
+                >
+                  PRESET
+                </button>
+              </span>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function Playlist({
   tracks,
   currentIndex,
@@ -1142,7 +1462,9 @@ function Playlist({
   onResizePointerDown,
   onResizePointerMove,
   onResizePointerUp,
+  radioProps,
 }) {
+  const [view, setView] = useState('library');
   const filteredTracks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const matchingTracks = tracks
@@ -1164,11 +1486,21 @@ function Playlist({
     <aside className="library-view" style={style} aria-label="Library playlist">
       <div className="library-header">
         <div>
-          <p className="eyebrow">Library</p>
-          <h2>Playlist</h2>
+          <p className="eyebrow">{view === 'radio' ? 'Internet directory' : 'Library'}</p>
+          <h2>{view === 'radio' ? 'Radio' : 'Playlist'}</h2>
         </div>
         <span>{filteredTracks.length}/{tracks.length}</span>
       </div>
+
+      <div className="library-mode-tabs" aria-label="Library mode">
+        <button type="button" data-active={view === 'library'} onClick={() => setView('library')}>Library</button>
+        <button type="button" data-active={view === 'radio'} onClick={() => setView('radio')}>Radio</button>
+      </div>
+
+      {view === 'radio' ? (
+        <RadioBrowserPanel {...radioProps} />
+      ) : (
+        <>
 
       <label className="search-field">
         <span>Search</span>
@@ -1237,6 +1569,8 @@ function Playlist({
           })
         )}
       </div>
+        </>
+      )}
       {resizable && (
         <ResizeHandle
           label="library"
@@ -1322,6 +1656,13 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [customTitles, setCustomTitles] = useState(() => readLocalStorageJson(CUSTOM_TITLES_STORAGE_KEY, {}));
   const [deletedTracks, setDeletedTracks] = useState(() => readLocalStorageJson(DELETED_TRACKS_STORAGE_KEY, []));
   const [favoriteTracks, setFavoriteTracks] = useState(() => readLocalStorageJson(FAVORITE_TRACKS_STORAGE_KEY, []));
+  const [favoriteRadioStations, setFavoriteRadioStations] = useState(() => (
+    readLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, []).map(normalizeRadioStation).filter(Boolean)
+  ));
+  const [radioPresets, setRadioPresets] = useState(() => (
+    readLocalStorageJson(RADIO_PRESETS_STORAGE_KEY, []).map(normalizeRadioStation).filter(Boolean)
+  ));
+  const [radioTrack, setRadioTrack] = useState(null);
   const [eqPresets, setEqPresets] = useState(() => {
     return readLocalStorageJson(EQ_PRESETS_STORAGE_KEY, {});
   });
@@ -1349,7 +1690,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       })
   ), [catalogTracks, customTitles, deletedTrackSet, favoriteTrackSet]);
   const hasTracks = tracks.length > 0;
-  const currentTrack = hasTracks ? tracks[trackIndex] : null;
+  const currentTrack = radioTrack || (hasTracks ? tracks[trackIndex] : null);
+  const hasPlayableTrack = Boolean(currentTrack);
+  const currentRadioStationId = currentTrack?.source === 'radio-browser' ? currentTrack.radioStation?.stationuuid : '';
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
   const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
   const renderedPanelSizes = isMobile ? {} : panelSizes;
@@ -1376,7 +1719,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [trackIndex, tracks.length]);
 
   useEffect(() => {
-    if (!currentTrack?.filename) return;
+    if (!currentTrack?.filename || currentTrack.source === 'radio-browser') return;
     writeLocalStorageJson(LAST_TRACK_STORAGE_KEY, { filename: currentTrack.filename });
   }, [currentTrack]);
 
@@ -1391,6 +1734,14 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   useEffect(() => {
     writeLocalStorageJson(LIBRARY_SIZE_STORAGE_KEY, librarySize);
   }, [librarySize]);
+
+  useEffect(() => {
+    writeLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, favoriteRadioStations);
+  }, [favoriteRadioStations]);
+
+  useEffect(() => {
+    writeLocalStorageJson(RADIO_PRESETS_STORAGE_KEY, radioPresets);
+  }, [radioPresets]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 820px)');
@@ -1454,15 +1805,16 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
-      setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
-      if (currentTrack?.filename) {
+      const finiteDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      setProgress(finiteDuration ? audio.currentTime / finiteDuration : 0);
+      if (currentTrack?.filename && currentTrack.source !== 'radio-browser') {
         writeLocalStorageJson(PLAYBACK_POSITION_STORAGE_KEY, {
           filename: currentTrack.filename,
           time: audio.currentTime,
         });
       }
     };
-    const onLoadedMetadata = () => setDuration(audio.duration || 0);
+    const onLoadedMetadata = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onEnded = () => {
       if (repeat) {
         audio.currentTime = 0;
@@ -1496,7 +1848,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
     audio.src = currentTrack.src;
     const savedPosition = readLocalStorageJson(PLAYBACK_POSITION_STORAGE_KEY, null);
-    const savedTime = savedPosition?.filename === currentTrack.filename ? Math.max(0, Number(savedPosition.time) || 0) : 0;
+    const isRadioTrack = currentTrack.source === 'radio-browser';
+    const savedTime = !isRadioTrack && savedPosition?.filename === currentTrack.filename ? Math.max(0, Number(savedPosition.time) || 0) : 0;
     const applySavedPosition = () => {
       if (!savedTime || !Number.isFinite(audio.duration)) return;
       const nextTime = clamp(savedTime, 0, Math.max(0, audio.duration - 0.4));
@@ -1511,9 +1864,10 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     audio.addEventListener('loadedmetadata', applySavedPosition, { once: true });
 
     if (isPlaying) {
-      ensureAudioGraph(audio, eqGains, eqEnabled)
-        .then(() => audio.play())
-        .catch(() => setIsPlaying(false));
+      const playback = isRadioTrack
+        ? audio.play()
+        : ensureAudioGraph(audio, eqGains, eqEnabled).then(() => audio.play());
+      playback.catch(() => setIsPlaying(false));
     }
     return () => audio.removeEventListener('loadedmetadata', applySavedPosition);
   }, [currentTrack]);
@@ -1544,13 +1898,17 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const play = useCallback(async () => {
     if (!audioRef.current || !currentTrack) return;
     try {
-      await ensureAudioGraph(audioRef.current, eqGains, eqEnabled);
+      if (currentTrack.source !== 'radio-browser') {
+        await ensureAudioGraph(audioRef.current, eqGains, eqEnabled);
+      }
       await audioRef.current.play();
       setIsPlaying(true);
       setAudioError('');
     } catch {
       setIsPlaying(false);
-      setAudioError('This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
+      setAudioError(currentTrack.source === 'radio-browser'
+        ? 'This radio stream could not start. Some stations block browser playback or use unsupported stream formats.'
+        : 'This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
     }
   }, [currentTrack, eqEnabled, eqGains]);
 
@@ -1586,19 +1944,29 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [currentTrack, duration]);
 
   const previous = useCallback(() => {
+    if (radioTrack) {
+      setRadioTrack(null);
+      setTrackIndex((index) => Math.max(0, index));
+      return;
+    }
     if (!tracks.length) return;
     if (audioRef.current?.currentTime > 3) {
       audioRef.current.currentTime = 0;
       return;
     }
     setTrackIndex((index) => (index - 1 + tracks.length) % tracks.length);
-  }, [tracks.length]);
+  }, [radioTrack, tracks.length]);
 
   const next = useCallback(() => {
+    if (radioTrack) {
+      setRadioTrack(null);
+      setTrackIndex((index) => Math.max(0, index));
+      return;
+    }
     if (!tracks.length) return;
     if (shuffle) setTrackIndex((index) => getNextShuffledIndex(index));
     else setTrackIndex((index) => (index + 1) % tracks.length);
-  }, [getNextShuffledIndex, shuffle, tracks.length]);
+  }, [getNextShuffledIndex, radioTrack, shuffle, tracks.length]);
 
   const toggleShuffle = useCallback(() => {
     if (shuffle) {
@@ -1614,9 +1982,40 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [getNextShuffledIndex, shuffle, tracks.length]);
 
   const selectTrack = (index) => {
+    setRadioTrack(null);
     setTrackIndex(index);
     setIsPlaying(true);
   };
+
+  const playRadioStation = useCallback((station) => {
+    const normalizedStation = normalizeRadioStation(station);
+    if (!normalizedStation) return;
+    setRadioTrack(getRadioTrack(normalizedStation));
+    setIsPlaying(true);
+    setAudioError('');
+    fetch(`${RADIO_BROWSER_BASE_URL}/json/url/${encodeURIComponent(normalizedStation.stationuuid)}`)
+      .catch(() => {});
+  }, []);
+
+  const toggleSavedRadioStation = useCallback((station, setter) => {
+    const normalizedStation = normalizeRadioStation(station);
+    if (!normalizedStation) return;
+    setter((currentStations) => {
+      const stationId = getStationId(normalizedStation);
+      if (currentStations.some((savedStation) => getStationId(savedStation) === stationId)) {
+        return currentStations.filter((savedStation) => getStationId(savedStation) !== stationId);
+      }
+      return [normalizedStation, ...currentStations].slice(0, 80);
+    });
+  }, []);
+
+  const toggleFavoriteRadioStation = useCallback((station) => {
+    toggleSavedRadioStation(station, setFavoriteRadioStations);
+  }, [toggleSavedRadioStation]);
+
+  const toggleRadioPreset = useCallback((station) => {
+    toggleSavedRadioStation(station, setRadioPresets);
+  }, [toggleSavedRadioStation]);
 
   const editTrackTitle = useCallback((track) => {
     if (!track?.filename) return;
@@ -2113,6 +2512,15 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onPanelResizePointerDown={onPanelResizePointerDown}
               onPanelResizePointerMove={onPanelResizePointerMove}
               onPanelResizePointerUp={onPanelResizePointerUp}
+              radioProps={{
+                activeStationId: currentRadioStationId,
+                favoriteStations: favoriteRadioStations,
+                presetStations: radioPresets,
+                playing: isPlaying,
+                onPlayStation: playRadioStation,
+                onToggleFavoriteStation: toggleFavoriteRadioStation,
+                onTogglePresetStation: toggleRadioPreset,
+              }}
               playerRef={miniRef}
               canOpenFullPlayer={!isMobile}
             />
@@ -2169,16 +2577,16 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
             </div>
 
             <div className="transport-row" aria-label="Playback controls">
-              <button type="button" onClick={previous} disabled={!hasTracks} title="Previous track">
+              <button type="button" onClick={previous} disabled={!hasPlayableTrack} title="Previous track">
                 PREV
               </button>
-              <button className="play-button" type="button" onClick={togglePlay} disabled={!hasTracks} title={isPlaying ? 'Pause' : 'Play'}>
+              <button className="play-button" type="button" onClick={togglePlay} disabled={!hasPlayableTrack} title={isPlaying ? 'Pause' : 'Play'}>
                 {isPlaying ? 'PAUSE' : 'PLAY'}
               </button>
-              <button type="button" onClick={stop} disabled={!hasTracks} title="Stop">
+              <button type="button" onClick={stop} disabled={!hasPlayableTrack} title="Stop">
                 STOP
               </button>
-              <button type="button" onClick={next} disabled={!hasTracks} title="Next track">
+              <button type="button" onClick={next} disabled={!hasPlayableTrack} title="Next track">
                 NEXT
               </button>
             </div>
@@ -2219,6 +2627,15 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         onResizePointerDown={onLibraryResizePointerDown}
         onResizePointerMove={onLibraryResizePointerMove}
         onResizePointerUp={onLibraryResizePointerUp}
+        radioProps={{
+          activeStationId: currentRadioStationId,
+          favoriteStations: favoriteRadioStations,
+          presetStations: radioPresets,
+          playing: isPlaying,
+          onPlayStation: playRadioStation,
+          onToggleFavoriteStation: toggleFavoriteRadioStation,
+          onTogglePresetStation: toggleRadioPreset,
+        }}
       />
         </>
       )}
