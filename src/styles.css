@@ -2590,12 +2590,12 @@ h1 {
 }
 
 .winamp-playlist-panel .winamp-window-bar {
-  cursor: default;
-  touch-action: auto;
+  cursor: grab;
+  touch-action: none;
 }
 
 .winamp-playlist-panel .winamp-window-bar:active {
-  cursor: default;
+  cursor: grabbing;
 }
 
 .winamp-vis-row {
