@@ -36,6 +36,14 @@ const parseDurationLabel = (label) => {
   return parts.reduce((total, part) => (total * 60) + part, 0);
 };
 
+const sortFavoritesFirst = (items, getTrack = (item) => item) => (
+  [...items].sort((a, b) => {
+    const aFavorite = getTrack(a).favorite ? 1 : 0;
+    const bFavorite = getTrack(b).favorite ? 1 : 0;
+    return bFavorite - aFavorite;
+  })
+);
+
 const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
   return liveDuration ? formatTime(liveDuration) : '--:--';
@@ -583,6 +591,9 @@ function WinampMiniPlayer({
   const marqueeRef = useRef(null);
   const marqueeTextRef = useRef(null);
   const [titleOverflowing, setTitleOverflowing] = useState(false);
+  const playlistTracks = useMemo(() => (
+    sortFavoritesFirst(tracks.map((playlistTrack, index) => ({ playlistTrack, index })), (item) => item.playlistTrack)
+  ), [tracks]);
 
   useEffect(() => {
     const marquee = marqueeRef.current;
@@ -742,7 +753,7 @@ function WinampMiniPlayer({
           {tracks.length === 0 ? (
             <div className="winamp-empty">Drop tracks into /public/assets/audio</div>
           ) : (
-            tracks.map((playlistTrack, index) => {
+            playlistTracks.map(({ playlistTrack, index }) => {
               const isActive = index === currentIndex;
               return (
                 <div
@@ -835,11 +846,10 @@ function Playlist({
 }) {
   const filteredTracks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return tracks.map((track, index) => ({ track, index }));
-
-    return tracks
+    const matchingTracks = tracks
       .map((track, index) => ({ track, index }))
       .filter(({ track }) => {
+        if (!normalizedQuery) return true;
         const haystack = [getTrackTitle(track), track.title, track.mix, track.version, track.format, track.bpm, track.key, track.filename]
           .concat(track.source, track.flowUrl)
           .concat(track.favorite ? 'favorite fav' : '')
@@ -848,6 +858,7 @@ function Playlist({
           .toLowerCase();
         return haystack.includes(normalizedQuery);
       });
+    return sortFavoritesFirst(matchingTracks, (item) => item.track);
   }, [tracks, query]);
 
   return (
