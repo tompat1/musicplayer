@@ -1499,8 +1499,7 @@ h1 {
   white-space: normal;
 }
 
-.winamp-window-bar[data-tooltip],
-.winamp-panel-drag-handle[data-tooltip] {
+.winamp-window-bar[data-tooltip] {
   position: relative;
 }
 
