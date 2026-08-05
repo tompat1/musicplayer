@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const SNAP_PX = 80;
+const PANEL_SNAP_PX = 34;
 const audioGraphs = new WeakMap();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -18,6 +19,9 @@ const EQ_PRESETS_STORAGE_KEY = 'rynell-player-eq-presets';
 const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
 const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
 const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
+const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
+const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
+const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
 const playerBrand = 'RYNELL PLAYER';
 
 const formatTime = (seconds) => {
@@ -43,6 +47,8 @@ const sortFavoritesFirst = (items, getTrack = (item) => item) => (
     return bFavorite - aFavorite;
   })
 );
+
+const isPanelDetached = (position) => Boolean(position);
 
 const getDurationLabel = (track, liveDuration) => {
   if (track?.duration) return track.duration;
@@ -479,6 +485,28 @@ function WinampLedButton({ active, children, className = '', ...props }) {
   );
 }
 
+function PanelDragHandle({ panel, label, onPointerDown, onPointerMove, onPointerUp }) {
+  return (
+    <button
+      type="button"
+      className="winamp-panel-drag-handle"
+      aria-label={`Move ${label}`}
+      title={`Move ${label}`}
+      onPointerDown={(event) => (panel ? onPointerDown(panel, event) : onPointerDown(event))}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <span aria-hidden="true" />
+      <span aria-hidden="true" />
+      <span aria-hidden="true" />
+      <span aria-hidden="true" />
+      <span aria-hidden="true" />
+      <span aria-hidden="true" />
+    </button>
+  );
+}
+
 function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
@@ -546,6 +574,8 @@ function WinampMiniPlayer({
   progress,
   position,
   dragging,
+  panelOffsets,
+  activePanel,
   playlistOpen,
   durations,
   volume,
@@ -581,10 +611,31 @@ function WinampMiniPlayer({
   onTitlePointerDown,
   onTitlePointerMove,
   onTitlePointerUp,
+  onPanelPointerDown,
+  onPanelPointerMove,
+  onPanelPointerUp,
   playerRef,
   canOpenFullPlayer,
 }) {
   const style = position ? { left: position.x, top: position.y } : undefined;
+  const getPanelStyle = (panel) => {
+    if (!canOpenFullPlayer) return undefined;
+    const panelPosition = panelOffsets[panel];
+    if (!panelPosition) return undefined;
+    return {
+      position: 'fixed',
+      left: panelPosition.x,
+      top: panelPosition.y,
+      width: panelPosition.width,
+      height: panelPosition.height,
+      zIndex: activePanel === panel ? 8 : 6,
+    };
+  };
+  const getPanelSlotStyle = (panel) => {
+    if (!canOpenFullPlayer) return undefined;
+    const panelPosition = panelOffsets[panel];
+    return panelPosition ? { width: panelPosition.width } : undefined;
+  };
   const bitrate = track?.bitrate || (track?.source === 'google-flow' ? 'FLOW' : '320');
   const format = track?.format || 'AUDIO';
   const trackTitle = getTrackTitle(track).toUpperCase();
@@ -616,7 +667,16 @@ function WinampMiniPlayer({
   return (
     <aside ref={playerRef} className="winamp-mini" data-skin="classic" style={style} aria-label="Floating Winamp miniplayer">
       {dragging && <div className="dock-hint">Drag to edge to dock</div>}
-      <section className="winamp-panel winamp-player-panel" aria-label="Rynell player">
+      <section
+        className="winamp-panel winamp-player-panel"
+        aria-label="Rynell player"
+      >
+        <PanelDragHandle
+          label="player"
+          onPointerDown={onTitlePointerDown}
+          onPointerMove={onTitlePointerMove}
+          onPointerUp={onTitlePointerUp}
+        />
         <WinampWindowBar
           title={playerBrand}
           quiet
@@ -685,8 +745,27 @@ function WinampMiniPlayer({
         </div>
       </section>
 
-      <section className="winamp-panel winamp-eq-panel" aria-label="Winamp equalizer">
-        <WinampWindowBar title="RYNELL EQUALIZER">
+      <div className="winamp-panel-slot" style={getPanelSlotStyle('eq')} data-empty={isPanelDetached(panelOffsets.eq)}>
+        <section
+          className="winamp-panel winamp-eq-panel"
+          style={getPanelStyle('eq')}
+          data-detached={canOpenFullPlayer && isPanelDetached(panelOffsets.eq)}
+          data-moving={activePanel === 'eq'}
+          aria-label="Winamp equalizer"
+        >
+          <PanelDragHandle
+            panel="eq"
+            label="equalizer"
+            onPointerDown={onPanelPointerDown}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+          />
+          <WinampWindowBar
+            title="RYNELL EQUALIZER"
+            onPointerDown={(event) => onPanelPointerDown('eq', event)}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+          >
           <WinampLedButton active={eqEnabled} onClick={onToggleEq}>ON</WinampLedButton>
           <WinampLedButton active={eqPanelOpen} onClick={onToggleEqPanel}>EQ</WinampLedButton>
           <select
@@ -727,11 +806,31 @@ function WinampMiniPlayer({
               <span>{band >= 1000 ? `${band / 1000}K` : band}</span>
             </div>
           ))}
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
 
-      <section className="winamp-panel winamp-playlist-panel" aria-label="Winamp playlist">
-        <WinampWindowBar title="RYNELL PLAYLIST">
+      <div className="winamp-panel-slot" style={getPanelSlotStyle('playlist')} data-empty={isPanelDetached(panelOffsets.playlist)}>
+        <section
+          className="winamp-panel winamp-playlist-panel"
+          style={getPanelStyle('playlist')}
+          data-detached={canOpenFullPlayer && isPanelDetached(panelOffsets.playlist)}
+          data-moving={activePanel === 'playlist'}
+          aria-label="Winamp playlist"
+        >
+          <PanelDragHandle
+            panel="playlist"
+            label="playlist"
+            onPointerDown={onPanelPointerDown}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+          />
+          <WinampWindowBar
+            title="RYNELL PLAYLIST"
+            onPointerDown={(event) => onPanelPointerDown('playlist', event)}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+          >
           <WinampLedButton active={playlistOpen} onClick={onTogglePlaylist} aria-expanded={playlistOpen}>PL</WinampLedButton>
         </WinampWindowBar>
 
@@ -794,7 +893,8 @@ function WinampMiniPlayer({
         <div className="winamp-playlist-footer">
           <strong>{formatTime(currentTime)}/{durationLabel}</strong>
         </div>
-      </section>
+        </section>
+      </div>
     </aside>
   );
 }
@@ -829,6 +929,11 @@ function readLocalStorageJson(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function writeLocalStorageJson(key, value) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, JSON.stringify(value));
 }
 
 function Playlist({
@@ -943,7 +1048,11 @@ function Playlist({
 }
 
 export default function AudioPlayer({ tracks: catalogTracks = [] }) {
-  const [trackIndex, setTrackIndex] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(() => {
+    const lastTrack = readLocalStorageJson(LAST_TRACK_STORAGE_KEY, null);
+    if (!lastTrack?.filename) return 0;
+    return Math.max(0, catalogTracks.findIndex((track) => track.filename === lastTrack.filename));
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.75);
@@ -962,6 +1071,23 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [miniPlaylistOpen, setMiniPlaylistOpen] = useState(true);
   const [visualMode, setVisualMode] = useState('candy');
   const [isMobile, setIsMobile] = useState(false);
+  const [panelOffsets, setPanelOffsets] = useState(() => {
+    const storedPositions = readLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, {});
+    const normalizePanelPosition = (position) => {
+      if (!position) return null;
+      const x = Number(position.x);
+      const y = Number(position.y);
+      const width = Number(position.width);
+      const height = Number(position.height);
+      if (![x, y, width, height].every(Number.isFinite)) return null;
+      return { x, y, width, height };
+    };
+    return {
+      eq: normalizePanelPosition(storedPositions.eq),
+      playlist: normalizePanelPosition(storedPositions.playlist),
+    };
+  });
+  const [activePanel, setActivePanel] = useState('');
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqGains, setEqGains] = useState(DEFAULT_EQ_GAINS);
   const [eqPanelOpen, setEqPanelOpen] = useState(true);
@@ -977,6 +1103,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const miniRef = useRef(null);
   const miniDragging = useRef(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
+  const panelDragging = useRef(null);
   const shuffleQueue = useRef([]);
   const deletedTrackSet = useMemo(() => new Set(deletedTracks), [deletedTracks]);
   const favoriteTrackSet = useMemo(() => new Set(favoriteTracks), [favoriteTracks]);
@@ -994,6 +1121,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   ), [catalogTracks, customTitles, deletedTrackSet, favoriteTrackSet]);
   const hasTracks = tracks.length > 0;
   const currentTrack = hasTracks ? tracks[trackIndex] : null;
+  const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
 
   useEffect(() => {
     if (trackIndex > tracks.length - 1) setTrackIndex(0);
@@ -1011,6 +1139,15 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   }, [trackIndex, tracks.length]);
 
   useEffect(() => {
+    if (!currentTrack?.filename) return;
+    writeLocalStorageJson(LAST_TRACK_STORAGE_KEY, { filename: currentTrack.filename });
+  }, [currentTrack]);
+
+  useEffect(() => {
+    writeLocalStorageJson(PANEL_POSITIONS_STORAGE_KEY, panelOffsets);
+  }, [panelOffsets]);
+
+  useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 760px)');
     const syncMobileMode = () => {
       const matches = mediaQuery.matches;
@@ -1026,6 +1163,12 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     mediaQuery.addEventListener('change', syncMobileMode);
     return () => mediaQuery.removeEventListener('change', syncMobileMode);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    panelDragging.current = null;
+    setActivePanel('');
+  }, [isMobile]);
 
   useEffect(() => {
     const keepMiniInViewport = () => {
@@ -1068,6 +1211,12 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+      if (currentTrack?.filename) {
+        writeLocalStorageJson(PLAYBACK_POSITION_STORAGE_KEY, {
+          filename: currentTrack.filename,
+          time: audio.currentTime,
+        });
+      }
     };
     const onLoadedMetadata = () => setDuration(audio.duration || 0);
     const onEnded = () => {
@@ -1095,23 +1244,34 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [getNextShuffledIndex, repeat, shuffle, trackIndex, tracks.length]);
+  }, [currentTrack, getNextShuffledIndex, repeat, shuffle, trackIndex, tracks.length]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
 
     audio.src = currentTrack.src;
+    const savedPosition = readLocalStorageJson(PLAYBACK_POSITION_STORAGE_KEY, null);
+    const savedTime = savedPosition?.filename === currentTrack.filename ? Math.max(0, Number(savedPosition.time) || 0) : 0;
+    const applySavedPosition = () => {
+      if (!savedTime || !Number.isFinite(audio.duration)) return;
+      const nextTime = clamp(savedTime, 0, Math.max(0, audio.duration - 0.4));
+      audio.currentTime = nextTime;
+      setCurrentTime(nextTime);
+      setProgress(audio.duration ? nextTime / audio.duration : 0);
+    };
     setProgress(0);
-    setCurrentTime(0);
+    setCurrentTime(savedTime);
     setDuration(0);
     setAudioError('');
+    audio.addEventListener('loadedmetadata', applySavedPosition, { once: true });
 
     if (isPlaying) {
       ensureAudioGraph(audio, eqGains, eqEnabled)
         .then(() => audio.play())
         .catch(() => setIsPlaying(false));
     }
+    return () => audio.removeEventListener('loadedmetadata', applySavedPosition);
   }, [currentTrack]);
 
   useEffect(() => {
@@ -1375,7 +1535,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const onMiniTitlePointerDown = useCallback((event) => {
     if (isMobile) return;
-    if (event.target.tagName === 'BUTTON') return;
+    if (hasDetachedPanels) return;
+    if (event.target.tagName === 'BUTTON' && !event.target.closest('.winamp-panel-drag-handle')) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
     const rect = miniRef.current.getBoundingClientRect();
@@ -1386,7 +1547,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     miniDragging.current = true;
     setIsDraggingMini(true);
     setDocked(null);
-  }, [isMobile]);
+  }, [hasDetachedPanels, isMobile]);
 
   const onMiniTitlePointerMove = useCallback((event) => {
     if (!miniDragging.current) return;
@@ -1422,6 +1583,81 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
     setMiniPosition({ x, y });
   }, [isMobile]);
+
+  const onPanelPointerDown = useCallback((panel, event) => {
+    if (isMobile) return;
+    if (event.target.closest('.winamp-window-tools')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const panelElement = event.currentTarget.closest('.winamp-panel');
+    const rect = panelElement?.getBoundingClientRect();
+    const homeRect = panelElement?.parentElement?.getBoundingClientRect();
+    if (!rect) return;
+    const origin = panelOffsets[panel] || {
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    panelDragging.current = {
+      panel,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin,
+      home: {
+        x: homeRect?.left ?? rect.left,
+        y: homeRect?.top ?? rect.top,
+        width: homeRect?.width ?? rect.width,
+        height: homeRect?.height ?? rect.height,
+      },
+    };
+    setPanelOffsets((offsets) => ({
+      ...offsets,
+      [panel]: origin,
+    }));
+    setActivePanel(panel);
+  }, [isMobile, panelOffsets]);
+
+  const onPanelPointerMove = useCallback((event) => {
+    const drag = panelDragging.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const nextOffset = {
+      x: drag.origin.x + event.clientX - drag.startX,
+      y: drag.origin.y + event.clientY - drag.startY,
+      width: drag.origin.width,
+      height: drag.origin.height,
+    };
+    setPanelOffsets((offsets) => ({
+      ...offsets,
+      [drag.panel]: nextOffset,
+    }));
+  }, []);
+
+  const onPanelPointerUp = useCallback((event) => {
+    const drag = panelDragging.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panelDragging.current = null;
+
+    setPanelOffsets((offsets) => {
+      const position = offsets[drag.panel] || drag.origin;
+      const shouldSnapHome = Math.hypot(position.x - drag.home.x, position.y - drag.home.y) <= PANEL_SNAP_PX;
+      return {
+        ...offsets,
+        [drag.panel]: shouldSnapHome ? null : position,
+      };
+    });
+    setActivePanel('');
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
 
   const durationProbes = tracks.map((track) => (
     <DurationProbe key={track.filename} track={track} onDuration={setTrackDuration} />
@@ -1473,6 +1709,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               progress={progress}
               position={miniPosition}
               dragging={isDraggingMini}
+              panelOffsets={panelOffsets}
+              activePanel={activePanel}
               playlistOpen={miniPlaylistOpen}
               durations={durations}
               volume={volume}
@@ -1508,6 +1746,9 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onTitlePointerDown={onMiniTitlePointerDown}
               onTitlePointerMove={onMiniTitlePointerMove}
               onTitlePointerUp={onMiniTitlePointerUp}
+              onPanelPointerDown={onPanelPointerDown}
+              onPanelPointerMove={onPanelPointerMove}
+              onPanelPointerUp={onPanelPointerUp}
               playerRef={miniRef}
               canOpenFullPlayer={!isMobile}
             />

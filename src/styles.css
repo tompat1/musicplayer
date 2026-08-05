@@ -92,7 +92,7 @@ p {
   display: block;
   width: 100%;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .duration-probes {
@@ -1876,6 +1876,8 @@ h1 {
   --skin-button-ink: #05070c;
   --skin-accent: #d8c77a;
   width: min(318px, calc(100vw - 24px));
+  max-height: none;
+  overflow: visible;
   border: 1px solid #08090f;
   border-radius: 2px;
   color: #e8ecff;
@@ -1888,6 +1890,7 @@ h1 {
 }
 
 .winamp-panel {
+  position: relative;
   overflow: hidden;
   border: 1px solid #03040a;
   border-radius: 2px;
@@ -1900,10 +1903,72 @@ h1 {
     inset 1px 1px 0 #8c94b4,
     inset -1px -1px 0 #05060b,
     inset 0 0 0 2px rgba(255, 255, 255, 0.025);
+  transition: box-shadow 160ms ease;
 }
 
-.winamp-panel + .winamp-panel {
+.winamp-panel[data-detached="true"] {
+  margin-top: 0;
+  max-height: calc(100dvh - 18px);
+  overflow: hidden;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.58),
+    0 0 0 1px #5f6a8e,
+    inset 1px 1px 0 #8c94b4,
+    inset -1px -1px 0 #05060b,
+    inset 0 0 0 2px rgba(255, 255, 255, 0.025);
+}
+
+.winamp-panel[data-moving="true"] {
+  transition: none;
+}
+
+.winamp-panel-slot {
+  min-height: 0;
+}
+
+.winamp-panel-slot[data-empty="true"] {
+  width: 0 !important;
+  height: 0 !important;
+  margin-top: 0 !important;
+  overflow: visible;
+}
+
+.winamp-player-panel + .winamp-panel-slot,
+.winamp-panel-slot + .winamp-panel-slot {
   margin-top: 5px;
+}
+
+.winamp-panel-drag-handle {
+  position: absolute;
+  z-index: 6;
+  top: 4px;
+  left: 7px;
+  display: grid;
+  grid-template-columns: repeat(3, 3px);
+  grid-template-rows: repeat(2, 3px);
+  gap: 3px;
+  width: 15px;
+  height: 9px;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+  border: 0;
+  color: rgba(216, 199, 122, 0.68);
+  background: transparent;
+  box-shadow: none;
+}
+
+.winamp-panel-drag-handle:active {
+  cursor: grabbing;
+}
+
+.winamp-panel-drag-handle span {
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 3px rgba(216, 199, 122, 0.24);
 }
 
 .winamp-window-bar {
@@ -1912,7 +1977,7 @@ h1 {
   gap: 5px;
   align-items: center;
   min-height: 17px;
-  padding: 2px 4px;
+  padding: 2px 4px 2px 28px;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -2624,6 +2689,17 @@ h1 {
     padding-inline: 8px;
     cursor: default;
     touch-action: auto;
+  }
+
+  .winamp-panel {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  .winamp-panel-drag-handle {
+    display: none;
   }
 
   .winamp-window-bar strong {
