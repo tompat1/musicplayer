@@ -22,8 +22,18 @@ const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
+const STORAGE_CONSENT_KEY = 'rynell-player-storage-consent';
 const playerBrand = 'RYNELL PLAYER';
 const EMPTY_PANEL_OFFSETS = { eq: null, playlist: null };
+const STORAGE_CONSENT_VERSION = 1;
+const DEFAULT_STORAGE_CONSENT = {
+  version: STORAGE_CONSENT_VERSION,
+  necessary: true,
+  preferences: false,
+  playback: false,
+  library: false,
+  acceptedAt: '',
+};
 
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -618,7 +628,14 @@ function WinampMiniPlayer({
   playerRef,
   canOpenFullPlayer,
 }) {
-  const style = position ? { left: position.x, top: position.y } : undefined;
+  const playerDetached = canOpenFullPlayer && Boolean(panelOffsets.eq || panelOffsets.playlist);
+  const style = !playerDetached && position ? { left: position.x, top: position.y } : undefined;
+  const playerStyle = playerDetached && position ? {
+    position: 'fixed',
+    left: position.x,
+    top: position.y,
+    zIndex: activePanel === 'player' ? 8 : 7,
+  } : undefined;
   const getPanelStyle = (panel) => {
     if (!canOpenFullPlayer) return undefined;
     const panelPosition = panelOffsets[panel];
@@ -670,6 +687,9 @@ function WinampMiniPlayer({
       {dragging && <div className="dock-hint">Drag to edge to dock</div>}
       <section
         className="winamp-panel winamp-player-panel"
+        style={playerStyle}
+        data-detached={playerDetached}
+        data-moving={activePanel === 'player'}
         aria-label="Rynell player"
       >
         <PanelDragHandle
@@ -935,6 +955,137 @@ function readLocalStorageJson(key, fallback) {
 function writeLocalStorageJson(key, value) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function StorageConsentModal() {
+  const [consent, setConsent] = useState(() => readLocalStorageJson(STORAGE_CONSENT_KEY, null));
+  const [draft, setDraft] = useState(() => ({
+    ...DEFAULT_STORAGE_CONSENT,
+    ...readLocalStorageJson(STORAGE_CONSENT_KEY, {}),
+  }));
+  const [open, setOpen] = useState(() => {
+    const storedConsent = readLocalStorageJson(STORAGE_CONSENT_KEY, null);
+    return storedConsent?.version !== STORAGE_CONSENT_VERSION;
+  });
+
+  const saveConsent = useCallback((choices) => {
+    const nextConsent = {
+      ...DEFAULT_STORAGE_CONSENT,
+      ...choices,
+      necessary: true,
+      version: STORAGE_CONSENT_VERSION,
+      acceptedAt: new Date().toISOString(),
+    };
+    writeLocalStorageJson(STORAGE_CONSENT_KEY, nextConsent);
+    setConsent(nextConsent);
+    setDraft(nextConsent);
+    setOpen(false);
+  }, []);
+
+  const toggleDraft = (key) => {
+    setDraft((choices) => ({ ...choices, [key]: !choices[key] }));
+  };
+
+  return (
+    <>
+      <button className="storage-console-trigger" type="button" onClick={() => setOpen(true)}>
+        PRIVACY
+      </button>
+
+      {open && (
+        <div className="storage-modal-backdrop" role="presentation">
+          <section
+            className="storage-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="storage-modal-title"
+          >
+            <div className="storage-modal-header">
+              <span aria-hidden="true">SYS-LOCAL</span>
+              <button type="button" onClick={() => saveConsent(consent || draft)} aria-label="Close privacy settings">x</button>
+            </div>
+
+            <div className="storage-modal-body">
+              <div>
+                <p className="eyebrow">Storage permissions</p>
+                <h2 id="storage-modal-title">Local Data Console</h2>
+                <p>
+                  This player uses browser local storage for playback recovery, panel layout, EQ presets, favorites,
+                  deleted tracks, and custom titles. No third-party tracking is wired into this app.
+                </p>
+              </div>
+
+              <div className="storage-category-list">
+                <label className="storage-category" data-locked="true">
+                  <input type="checkbox" checked readOnly />
+                  <span>
+                    <strong>Required system memory</strong>
+                    <small>Needed to save your storage decision and keep the interface usable.</small>
+                  </span>
+                </label>
+
+                <label className="storage-category">
+                  <input
+                    type="checkbox"
+                    checked={draft.preferences}
+                    onChange={() => toggleDraft('preferences')}
+                  />
+                  <span>
+                    <strong>Interface preferences</strong>
+                    <small>Remembers panel layout, mini-player state, skin-like controls, and EQ choices.</small>
+                  </span>
+                </label>
+
+                <label className="storage-category">
+                  <input
+                    type="checkbox"
+                    checked={draft.playback}
+                    onChange={() => toggleDraft('playback')}
+                  />
+                  <span>
+                    <strong>Playback continuity</strong>
+                    <small>Restores the last track and playback position after a reload.</small>
+                  </span>
+                </label>
+
+                <label className="storage-category">
+                  <input
+                    type="checkbox"
+                    checked={draft.library}
+                    onChange={() => toggleDraft('library')}
+                  />
+                  <span>
+                    <strong>Library personalization</strong>
+                    <small>Keeps favorites, renamed tracks, and hidden tracks on this device.</small>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="storage-modal-actions">
+              <button type="button" onClick={() => saveConsent(DEFAULT_STORAGE_CONSENT)}>
+                Reject optional
+              </button>
+              <button type="button" onClick={() => saveConsent(draft)}>
+                Save choices
+              </button>
+              <button
+                className="storage-primary-action"
+                type="button"
+                onClick={() => saveConsent({
+                  preferences: true,
+                  playback: true,
+                  library: true,
+                })}
+              >
+                Accept all
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  );
 }
 
 function Playlist({
@@ -1537,37 +1688,47 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const onMiniTitlePointerDown = useCallback((event) => {
     if (isMobile) return;
-    if (hasDetachedPanels) return;
     if (event.target.tagName === 'BUTTON' && !event.target.closest('.winamp-panel-drag-handle')) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
-    const rect = miniRef.current.getBoundingClientRect();
+    const dragElement = hasDetachedPanels
+      ? event.currentTarget.closest('.winamp-player-panel')
+      : miniRef.current;
+    const rect = (dragElement || miniRef.current).getBoundingClientRect();
     miniDragOffset.current = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
     miniDragging.current = true;
     setIsDraggingMini(true);
+    setActivePanel('player');
     setDocked(null);
   }, [hasDetachedPanels, isMobile]);
 
   const onMiniTitlePointerMove = useCallback((event) => {
     if (!miniDragging.current) return;
     event.preventDefault();
-    const width = miniRef.current?.offsetWidth || 320;
-    const height = miniRef.current?.offsetHeight || 190;
+    const dragElement = hasDetachedPanels
+      ? event.currentTarget.closest('.winamp-player-panel')
+      : miniRef.current;
+    const width = dragElement?.offsetWidth || 320;
+    const height = dragElement?.offsetHeight || 190;
     const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
     const y = clamp(event.clientY - miniDragOffset.current.y, 0, window.innerHeight - height);
     setMiniPosition({ x, y });
-  }, []);
+  }, [hasDetachedPanels]);
 
   const onMiniTitlePointerUp = useCallback((event) => {
     if (!miniDragging.current) return;
     miniDragging.current = false;
     setIsDraggingMini(false);
+    setActivePanel('');
 
-    const width = miniRef.current?.offsetWidth || 320;
-    const height = miniRef.current?.offsetHeight || 190;
+    const dragElement = hasDetachedPanels
+      ? event.currentTarget.closest('.winamp-player-panel')
+      : miniRef.current;
+    const width = dragElement?.offsetWidth || 320;
+    const height = dragElement?.offsetHeight || 190;
     const x = clamp(event.clientX - miniDragOffset.current.x, 0, window.innerWidth - width);
     const y = clamp(event.clientY - miniDragOffset.current.y, 0, window.innerHeight - height);
     const edgeDistances = {
@@ -1578,13 +1739,13 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     };
     const closestSide = Object.entries(edgeDistances).sort((a, b) => a[1] - b[1])[0];
 
-    if (!isMobile && closestSide[1] <= SNAP_PX) {
+    if (!isMobile && !hasDetachedPanels && closestSide[1] <= SNAP_PX) {
       setDocked(closestSide[0]);
       return;
     }
 
     setMiniPosition({ x, y });
-  }, [isMobile]);
+  }, [hasDetachedPanels, isMobile]);
 
   const onPanelPointerDown = useCallback((panel, event) => {
     if (isMobile) return;
@@ -1678,6 +1839,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         />
       )}
       <div className="duration-probes" aria-hidden="true">{durationProbes}</div>
+      <StorageConsentModal />
 
       {isMinimized ? (
         <>
