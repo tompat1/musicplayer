@@ -1472,10 +1472,6 @@ h1 {
   cursor: ns-resize;
 }
 
-[data-tooltip] {
-  position: relative;
-}
-
 [data-tooltip]::after {
   position: absolute;
   z-index: 120;
@@ -1501,6 +1497,11 @@ h1 {
   transform: translate(-50%, 4px);
   transition: opacity 120ms ease, transform 120ms ease;
   white-space: normal;
+}
+
+.winamp-window-bar[data-tooltip],
+.winamp-panel-drag-handle[data-tooltip] {
+  position: relative;
 }
 
 .winamp-window-bar[data-tooltip]::after,
