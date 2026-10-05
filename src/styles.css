@@ -15,7 +15,7 @@
   --cyan: #58d7ff;
   --radius: 8px;
   --mono: "Courier New", "Lucida Console", monospace;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Tahoma, Verdana, ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -287,6 +287,130 @@ p {
 .storage-modal-actions .storage-primary-action {
   color: #071007;
   background: linear-gradient(#f2fff4, #d6ff36 46%, #78a615);
+}
+
+.track-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  padding: 18px;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.track-editor {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid #020309;
+  border-radius: 2px;
+  color: #f2fff4;
+  background: linear-gradient(180deg, #222a43, #080b12);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(88, 215, 255, 0.42),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.track-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 4px 5px 4px 10px;
+  color: #061007;
+  background: linear-gradient(90deg, #d6ff36, #58d7ff 64%, #f2fff4);
+  font: 900 0.7rem/1 var(--mono);
+  letter-spacing: 0.12em;
+}
+
+.track-editor-header button {
+  display: grid;
+  width: 24px;
+  min-width: 24px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 1px solid #05060b;
+  place-items: center;
+  color: #f2fff4;
+  background: linear-gradient(#5f6a8e, #151827);
+  font: 900 0.9rem/1 var(--mono);
+}
+
+.track-editor-body {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+}
+
+.track-editor-body label {
+  color: var(--acid);
+  font: 900 0.7rem/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.track-editor-body input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(88, 215, 255, 0.58);
+  border-radius: 2px;
+  color: #ffffff;
+  background: #020403;
+  box-shadow: inset 0 2px 9px rgba(0, 0, 0, 0.8);
+  font: 800 0.95rem/1.2 var(--mono);
+}
+
+.track-editor-body p {
+  margin: 0;
+  color: rgba(230, 255, 234, 0.76);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.track-editor-body .track-editor-reset {
+  justify-self: start;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  color: #8de9ff;
+  background: transparent;
+  font: 800 0.68rem/1 var(--mono);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.track-editor-actions {
+  display: flex;
+  justify-content: end;
+  gap: 8px;
+  padding: 0 22px 22px;
+}
+
+.track-editor-actions button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid #05060b;
+  border-radius: 2px;
+  color: #edf2ff;
+  background: linear-gradient(#566281, #171b2b 48%, #070911);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.24), inset -1px -1px 0 rgba(0, 0, 0, 0.9);
+  font: 900 0.7rem/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.track-editor-actions .track-editor-save {
+  color: #071007;
+  background: linear-gradient(#f2fff4, #d6ff36 46%, #78a615);
+}
+
+.track-editor-actions button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.46;
 }
 
 .production-deck,
@@ -1214,17 +1338,18 @@ h1 {
 
 .eq-bar {
   flex: 1;
-  height: 14%;
+  height: 100%;
   border-radius: 2px 2px 0 0;
   background: rgba(0, 255, 65, 0.18);
-  transition: height 220ms ease, background 220ms ease;
+  transform: scaleY(0.14);
+  transform-origin: center bottom;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease-out;
 }
 
 .eq-bar[data-playing="true"] {
-  height: var(--level);
   background: linear-gradient(to top, var(--green), var(--acid), #fff785);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.55);
-  animation: eq-bounce 520ms ease-in-out var(--delay) infinite alternate;
+  animation: equalizer-scan 520ms ease-in-out var(--delay) infinite alternate;
 }
 
 .time-row {
@@ -1422,7 +1547,7 @@ h1 {
 }
 
 .radio-source-tabs {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   padding: 10px 0 0;
   border-bottom: 0;
 }
@@ -1565,23 +1690,34 @@ h1 {
 
 .radio-station-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  padding: 12px 0;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 7px;
+  align-items: center;
+  min-height: 34px;
+  padding: 3px 6px;
   border-bottom: 1px solid var(--line-soft);
+  color: var(--green);
+  background: #020403;
 }
 
 .radio-station-row[data-active="true"] {
-  background: rgba(0, 255, 65, 0.06);
+  color: #020403;
+  background: #00d52d;
+  text-shadow: none;
+}
+
+.radio-station-row:hover:not([data-active="true"]) {
+  color: #f0ffd8;
+  background: #06220a;
 }
 
 .radio-station-main {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) max-content;
-  gap: 10px;
+  grid-template-columns: 44px minmax(0, 1fr) 68px;
+  gap: 7px;
   align-items: center;
   min-width: 0;
-  min-height: 48px;
+  min-height: 26px;
   padding: 0;
   cursor: pointer;
   border: 0;
@@ -1590,79 +1726,67 @@ h1 {
   text-align: left;
 }
 
-.radio-favicon {
-  display: grid;
-  width: 40px;
-  aspect-ratio: 1;
-  overflow: hidden;
-  place-items: center;
-  border: 1px solid rgba(88, 215, 255, 0.24);
-  border-radius: 3px;
-  color: var(--cyan);
-  background: rgba(0, 0, 0, 0.32);
-  font: 900 0.68rem/1 var(--mono);
-}
-
-.radio-favicon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.radio-station-index,
+.radio-station-meta {
+  font: 900 0.62rem/1 var(--mono);
 }
 
 .radio-station-copy {
   min-width: 0;
 }
 
-.radio-station-copy strong,
-.radio-station-copy small {
+.radio-station-copy strong {
   display: block;
   overflow: hidden;
+  color: inherit;
+  font: 900 0.68rem/1.1 var(--mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.radio-station-copy strong {
-  margin-bottom: 4px;
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.radio-station-copy small,
-.radio-stats small {
-  color: var(--dim);
-  font-size: 0.72rem;
-}
-
-.radio-tag-row {
-  display: flex;
-  gap: 4px;
-  overflow: hidden;
-}
-
-.radio-tag-row i {
-  flex: 0 0 auto;
-  padding: 3px 5px;
-  border: 1px solid rgba(88, 215, 255, 0.14);
-  border-radius: 2px;
-  color: rgba(88, 215, 255, 0.78);
-  background: rgba(0, 0, 0, 0.22);
-  font: 800 0.56rem/1 var(--mono);
-  font-style: normal;
-  text-transform: uppercase;
-}
-
-.radio-stats {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-  color: var(--acid);
-  font: 800 0.64rem/1 var(--mono);
+.radio-station-meta {
+  justify-self: end;
+  color: rgba(132, 255, 159, 0.58);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .radio-station-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  display: flex;
+  gap: 3px;
+  justify-content: end;
+}
+
+.radio-station-actions button {
+  min-height: 22px;
+  padding: 3px 5px;
+  border: 1px solid #112b15;
+  border-radius: 2px;
+  color: #00ff36;
+  background: #051006;
+  box-shadow: none;
+  font: 900 0.6rem/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.radio-station-actions button[data-active="true"] {
+  color: #05070c;
+  background: #d8c77a;
+}
+
+.radio-station-row[data-active="true"] .radio-station-meta {
+  color: rgba(2, 4, 3, 0.62);
+}
+
+.radio-station-row[data-active="true"] .radio-station-actions button {
+  border-color: rgba(2, 4, 3, 0.42);
+  color: #020403;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.radio-station-row[data-active="true"] .radio-station-actions button[data-active="true"] {
+  color: #00ff36;
+  background: #020403;
 }
 
 .search-field {
@@ -1939,12 +2063,12 @@ h1 {
   color: var(--dim);
 }
 
-@keyframes eq-bounce {
+@keyframes equalizer-scan {
   from {
-    height: 18%;
+    transform: scaleY(0.18);
   }
   to {
-    height: var(--level);
+    transform: scaleY(var(--level));
   }
 }
 
@@ -2250,18 +2374,12 @@ h1 {
   }
 
   .radio-station-main {
-    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr) 58px;
+    gap: 5px;
   }
 
-  .radio-stats {
-    grid-column: 2;
-    grid-template-columns: repeat(2, max-content);
-    justify-content: start;
-    justify-items: start;
-  }
-
-  .radio-station-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .radio-station-actions button {
+    min-height: 30px;
   }
 
   .mini-player {
@@ -3152,39 +3270,59 @@ h1 {
 }
 
 .winamp-radio-wrap .radio-station-row {
-  gap: 4px;
-  padding: 5px 0;
-  border-bottom-color: rgba(0, 255, 54, 0.1);
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 7px;
+  min-height: 18px;
+  padding: 1px 8px;
+  border-bottom: 0;
+  color: #00ff36;
+  background: #020403;
 }
 
 .winamp-radio-wrap .radio-station-main {
-  grid-template-columns: 28px minmax(0, 1fr) 52px;
-  gap: 6px;
-  min-height: 28px;
+  grid-template-columns: 45px minmax(0, 1fr) 60px;
+  gap: 7px;
+  min-height: 18px;
 }
 
-.winamp-radio-wrap .radio-favicon {
-  width: 28px;
-  font-size: 0.5rem;
+.winamp-radio-wrap .radio-station-index,
+.winamp-radio-wrap .radio-station-copy strong,
+.winamp-radio-wrap .radio-station-meta,
+.winamp-radio-wrap .radio-station-actions button {
+  font: 900 0.63rem/1.05 var(--mono);
+  letter-spacing: 0;
 }
 
-.winamp-radio-wrap .radio-station-copy strong {
-  margin-bottom: 2px;
-  color: #00ff36;
-  font: 900 0.66rem/1 var(--mono);
-}
-
-.winamp-radio-wrap .radio-station-copy small,
-.winamp-radio-wrap .radio-stats small {
-  font-size: 0.52rem;
-}
-
-.winamp-radio-wrap .radio-tag-row {
-  display: none;
+.winamp-radio-wrap .radio-station-meta {
+  color: rgba(132, 255, 159, 0.58);
 }
 
 .winamp-radio-wrap .radio-station-actions {
   gap: 3px;
+}
+
+.winamp-radio-wrap .radio-station-actions button {
+  min-height: 16px;
+  padding: 1px 3px;
+  border-color: #112b15;
+  color: #00ff36;
+  background: #051006;
+  box-shadow: none;
+}
+
+.winamp-radio-wrap .radio-station-actions button[data-active="true"] {
+  color: #05070c;
+  background: #d8c77a;
+}
+
+.winamp-radio-wrap .radio-station-row[data-active="true"] {
+  color: #020403;
+  background: #00d52d;
+}
+
+.winamp-radio-wrap .radio-station-row:hover:not([data-active="true"]) {
+  color: #f0ffd8;
+  background: #06220a;
 }
 
 .winamp-songlist {
@@ -3584,6 +3722,35 @@ h1 {
     flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .winamp-radio-wrap .radio-station-row {
+    gap: 5px;
+    min-height: auto;
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(0, 255, 54, 0.08);
+  }
+
+  .winamp-radio-wrap .radio-station-main {
+    grid-template-columns: 24px minmax(0, 1fr) 52px;
+    gap: 4px;
+    min-height: 24px;
+  }
+
+  .winamp-radio-wrap .radio-station-actions {
+    min-width: max-content;
+  }
+
+  .winamp-radio-wrap .radio-station-index,
+  .winamp-radio-wrap .radio-station-copy strong,
+  .winamp-radio-wrap .radio-station-meta,
+  .winamp-radio-wrap .radio-station-actions button {
+    font-size: 0.58rem;
+  }
+
+  .winamp-radio-wrap .radio-station-actions button {
+    min-height: 24px;
+    padding: 4px 5px;
   }
 
   .winamp-song-row {

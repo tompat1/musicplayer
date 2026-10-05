@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-10-05T11:20:23.599Z",
+        "reason": "Agent: incumbent CRT console backdrop is visible in the user-provided reference screenshot and is part of the established visual system"
+      }
+    ]
+  }
+}

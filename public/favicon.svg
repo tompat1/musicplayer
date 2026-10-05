@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Rynell Playlist</title>
+  <rect width="64" height="64" rx="8" fill="#080b12"/>
+  <rect x="3" y="3" width="58" height="58" rx="5" fill="none" stroke="#65708d" stroke-width="3"/>
+  <path d="M13 13h38" stroke="#d8c77a" stroke-width="3"/>
+  <circle cx="14" cy="23" r="3" fill="#d6ff36"/>
+  <path d="M23 20v29a7 7 0 1 1-4-6.3V25l27-6v24a7 7 0 1 1-4-6.3V12z" fill="#00ff41"/>
+  <path d="M23 31l23-5" stroke="#071007" stroke-width="3" opacity=".65"/>
+</svg>

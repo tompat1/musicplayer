@@ -19,6 +19,8 @@ const CUSTOM_TITLES_STORAGE_KEY = 'rynell-player-custom-titles';
 const DELETED_TRACKS_STORAGE_KEY = 'rynell-player-deleted-tracks';
 const FAVORITE_TRACKS_STORAGE_KEY = 'rynell-player-favorite-tracks';
 const FAVORITE_RADIO_STATIONS_STORAGE_KEY = 'rynell-player-favorite-radio-stations';
+const CUSTOM_RADIO_TITLES_STORAGE_KEY = 'rynell-player-custom-radio-titles';
+const HIDDEN_RADIO_STATIONS_STORAGE_KEY = 'rynell-player-hidden-radio-stations';
 const LAST_TRACK_STORAGE_KEY = 'rynell-player-last-track';
 const PLAYBACK_POSITION_STORAGE_KEY = 'rynell-player-playback-position';
 const PANEL_POSITIONS_STORAGE_KEY = 'rynell-player-panel-positions';
@@ -397,7 +399,7 @@ function Equalizer({ playing }) {
           key={index}
           style={{
             '--delay': `${index * 36}ms`,
-            '--level': `${28 + ((index * 17) % 64)}%`,
+            '--level': (28 + ((index * 17) % 64)) / 100,
           }}
           data-playing={playing}
         />
@@ -423,7 +425,7 @@ function CoverArt({ track, playing }) {
   );
 }
 
-function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnabled }) {
+function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnabled, analyzable = true }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -515,6 +517,12 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnab
     };
 
     const start = async () => {
+      if (!analyzable) {
+        graph = null;
+        cancelAnimationFrame(frameId);
+        draw();
+        return;
+      }
       graph = await ensureAudioGraph(audio, eqGains, eqEnabled);
       cancelAnimationFrame(frameId);
       draw();
@@ -538,7 +546,7 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnab
       audio.removeEventListener('pause', stop);
       audio.removeEventListener('ended', stop);
     };
-  }, [audioRef, playing, visualMode, eqGains, eqEnabled]);
+  }, [audioRef, playing, visualMode, eqGains, eqEnabled, analyzable]);
 
   return (
     <div className="synced-visualizers" aria-hidden="true">
@@ -547,7 +555,7 @@ function SyncedCanvasVisualizer({ audioRef, playing, visualMode, eqGains, eqEnab
   );
 }
 
-function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }) {
+function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled, analyzable = true }) {
   const title = getTrackTitle(track);
 
   return (
@@ -565,6 +573,7 @@ function VisualMode({ track, playing, audioRef, visualMode, eqGains, eqEnabled }
         visualMode={visualMode}
         eqGains={eqGains}
         eqEnabled={eqEnabled}
+        analyzable={analyzable}
       />
 
       <div className="visual-title">
@@ -656,23 +665,6 @@ function ResizeHandle({ label, axis = 'both', onPointerDown, onPointerMove, onPo
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-    />
-  );
-}
-
-function RadioFavicon({ station }) {
-  const [failed, setFailed] = useState(false);
-  const initials = station.name.slice(0, 2).toUpperCase();
-
-  if (!station.favicon || failed) return initials;
-
-  return (
-    <img
-      src={station.favicon}
-      alt=""
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
     />
   );
 }
@@ -1316,10 +1308,69 @@ function StorageConsentModal() {
   );
 }
 
+function DisplayTitleEditor({ editorLabel, initialTitle, originalTitle, description, onClose, onSave }) {
+  const [title, setTitle] = useState(initialTitle);
+  const canSave = Boolean(title.trim());
+
+  return (
+    <div
+      className="track-editor-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <form
+        className="track-editor"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="track-editor-title"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+        }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSave) onSave(title.trim());
+        }}
+      >
+        <div className="track-editor-header">
+          <span id="track-editor-title">EDIT {editorLabel} TITLE</span>
+          <button type="button" onClick={onClose} aria-label="Close title editor">×</button>
+        </div>
+
+        <div className="track-editor-body">
+          <label htmlFor="track-title-input">Display title</label>
+          <input
+            id="track-title-input"
+            type="text"
+            value={title}
+            autoFocus
+            maxLength="160"
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <p>{description}</p>
+          <button className="track-editor-reset" type="button" onClick={() => setTitle(originalTitle)}>
+            Use original title
+          </button>
+        </div>
+
+        <div className="track-editor-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button className="track-editor-save" type="submit" disabled={!canSave}>Save title</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function RadioBrowserPanel({
   activeStationId,
+  customStationTitles,
   favoriteStations,
+  hiddenStationIds,
   playing,
+  onEditStation,
+  onHideStation,
   onPlayStation,
   onToggleFavoriteStation,
 }) {
@@ -1330,7 +1381,16 @@ function RadioBrowserPanel({
   const [source, setSource] = useState('results');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const favoriteStationSet = useMemo(() => new Set(favoriteStations.map(getStationId)), [favoriteStations]);
-  const visibleStations = source === 'results' ? stations : favoriteStations;
+  const hiddenStationSet = useMemo(() => new Set(hiddenStationIds), [hiddenStationIds]);
+  const resultStations = useMemo(
+    () => stations.filter((station) => !hiddenStationSet.has(getStationId(station))),
+    [hiddenStationSet, stations],
+  );
+  const visibleFavoriteStations = useMemo(
+    () => favoriteStations.filter((station) => !hiddenStationSet.has(getStationId(station))),
+    [favoriteStations, hiddenStationSet],
+  );
+  const visibleStations = source === 'results' ? resultStations : visibleFavoriteStations;
 
   const updateFilter = (key, value) => {
     setSource('results');
@@ -1379,8 +1439,8 @@ function RadioBrowserPanel({
     <section className="radio-browser-panel" aria-label="Internet radio browser">
       <div className="radio-source-tabs" aria-label="Radio station source">
         {[
-          ['results', `Results ${stations.length}`],
-          ['favorites', `Favorites ${favoriteStations.length}`],
+          ['results', `Results ${resultStations.length}`],
+          ['favorites', `Favorites ${visibleFavoriteStations.length}`],
         ].map(([value, label]) => (
           <button key={value} type="button" data-active={source === value} onClick={() => setSource(value)}>
             {label}
@@ -1478,38 +1538,48 @@ function RadioBrowserPanel({
             {source === 'results' ? 'No stations found.' : 'No saved stations yet.'}
           </div>
         )}
-        {visibleStations.map((station) => {
+        {visibleStations.map((station, index) => {
           const stationId = getStationId(station);
-          const tags = getStationTagList(station).slice(0, 4);
           const active = activeStationId === stationId;
+          const isFavorite = favoriteStationSet.has(stationId);
+          const stationName = customStationTitles[stationId] || station.name;
+          const stationFormat = [station.codec, station.bitrate ? `${station.bitrate}k` : 'live'].filter(Boolean).join(' ');
           return (
-            <article className="radio-station-row" key={stationId} role="listitem" data-active={active}>
-              <button className="radio-station-main" type="button" onClick={() => onPlayStation(station)}>
-                <span className="radio-favicon">
-                  <RadioFavicon station={station} />
-                </span>
+            <article
+              className="radio-station-row"
+              key={stationId}
+              role="listitem"
+              data-active={active}
+              data-playing={active && playing}
+            >
+              <button
+                className="radio-station-main"
+                type="button"
+                onClick={() => onPlayStation(station)}
+                title={`Play ${stationName}`}
+              >
+                <span className="radio-station-index">{isFavorite ? 'FAV' : `${index + 1}.`}</span>
                 <span className="radio-station-copy">
-                  <strong>{station.name}</strong>
-                  <small>{[station.country, station.language].filter(Boolean).join(' / ') || 'Internet radio'}</small>
-                  <span className="radio-tag-row">
-                    {tags.length ? tags.map((tag) => <i key={tag}>{tag}</i>) : <i>untagged</i>}
-                  </span>
+                  <strong>{stationName}</strong>
                 </span>
-                <span className="radio-stats">
-                  <strong>{station.codec}</strong>
-                  <small>{station.bitrate ? `${station.bitrate} kbps` : 'live'}</small>
-                </span>
+                <small className="radio-station-meta">{stationFormat}</small>
               </button>
               <span className="radio-station-actions">
-                <button type="button" onClick={() => onPlayStation(station)} data-active={active && playing}>
-                  {active && playing ? 'ON AIR' : 'PLAY'}
-                </button>
                 <button
                   type="button"
-                  data-active={favoriteStationSet.has(stationId)}
+                  aria-label={`${isFavorite ? 'Remove' : 'Add'} ${stationName} ${isFavorite ? 'from' : 'to'} favorites`}
+                  aria-pressed={isFavorite}
+                  data-active={isFavorite}
                   onClick={() => onToggleFavoriteStation(station)}
+                  title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 >
-                  FAV
+                  Fav
+                </button>
+                <button type="button" onClick={() => onEditStation(station)} title={`Edit title for ${stationName}`}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => onHideStation(station)} title={`Hide ${stationName} from radio`}>
+                  Hide
                 </button>
               </span>
             </article>
@@ -1734,7 +1804,15 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const [favoriteRadioStations, setFavoriteRadioStations] = useState(() => (
     readLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, []).map(normalizeRadioStation).filter(Boolean)
   ));
+  const [customRadioTitles, setCustomRadioTitles] = useState(() => (
+    readLocalStorageJson(CUSTOM_RADIO_TITLES_STORAGE_KEY, {})
+  ));
+  const [hiddenRadioStations, setHiddenRadioStations] = useState(() => (
+    readLocalStorageJson(HIDDEN_RADIO_STATIONS_STORAGE_KEY, [])
+  ));
   const [radioTrack, setRadioTrack] = useState(null);
+  const [editingTrack, setEditingTrack] = useState(null);
+  const [editingRadioStation, setEditingRadioStation] = useState(null);
   const [eqPresets, setEqPresets] = useState(() => {
     return readLocalStorageJson(EQ_PRESETS_STORAGE_KEY, {});
   });
@@ -1828,6 +1906,14 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   useEffect(() => {
     writeLocalStorageJson(FAVORITE_RADIO_STATIONS_STORAGE_KEY, favoriteRadioStations);
   }, [favoriteRadioStations]);
+
+  useEffect(() => {
+    writeLocalStorageJson(CUSTOM_RADIO_TITLES_STORAGE_KEY, customRadioTitles);
+  }, [customRadioTitles]);
+
+  useEffect(() => {
+    writeLocalStorageJson(HIDDEN_RADIO_STATIONS_STORAGE_KEY, hiddenRadioStations);
+  }, [hiddenRadioStations]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 820px)');
@@ -2074,13 +2160,18 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   };
 
   const playRadioStation = useCallback((station) => {
-    const normalizedStation = normalizeRadioStation(station);
+    const stationId = getStationId(station);
+    const customTitle = customRadioTitles[stationId];
+    const normalizedStation = normalizeRadioStation({
+      ...station,
+      ...(customTitle ? { name: customTitle } : {}),
+    });
     if (!normalizedStation) return;
     setRadioTrack(getRadioTrack(normalizedStation));
     setIsPlaying(true);
     setAudioError('');
     reportRadioStationClick(normalizedStation);
-  }, []);
+  }, [customRadioTitles]);
 
   const toggleSavedRadioStation = useCallback((station, setter) => {
     const normalizedStation = normalizeRadioStation(station);
@@ -2098,20 +2189,76 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     toggleSavedRadioStation(station, setFavoriteRadioStations);
   }, [toggleSavedRadioStation]);
 
+  const editRadioStationTitle = useCallback((station) => {
+    if (!getStationId(station)) return;
+    setEditingTrack(null);
+    setEditingRadioStation(station);
+  }, []);
+
+  const saveRadioStationTitle = useCallback((station, nextTitle) => {
+    const stationId = getStationId(station);
+    if (!stationId || !nextTitle) return;
+
+    setCustomRadioTitles((currentTitles) => {
+      const nextTitles = { ...currentTitles };
+      if (nextTitle === station.name) delete nextTitles[stationId];
+      else nextTitles[stationId] = nextTitle;
+      return nextTitles;
+    });
+
+    setRadioTrack((currentTrack) => {
+      if (currentTrack?.radioStation?.stationuuid !== stationId) return currentTrack;
+      const name = nextTitle === station.name ? station.name : nextTitle;
+      return {
+        ...currentTrack,
+        title: name,
+        displayTitle: name,
+        radioStation: { ...currentTrack.radioStation, name },
+      };
+    });
+    setEditingRadioStation(null);
+  }, []);
+
+  const hideRadioStation = useCallback((station) => {
+    const stationId = getStationId(station);
+    if (!stationId) return;
+    const displayName = customRadioTitles[stationId] || station.name;
+    if (!window.confirm(`Hide "${displayName}" from the radio directory on this device?`)) return;
+
+    setHiddenRadioStations((currentIds) => (
+      currentIds.includes(stationId) ? currentIds : [...currentIds, stationId]
+    ));
+    setFavoriteRadioStations((currentStations) => (
+      currentStations.filter((savedStation) => getStationId(savedStation) !== stationId)
+    ));
+
+    if (currentRadioStationId === stationId) {
+      audioRef.current?.pause();
+      setRadioTrack(null);
+      setIsPlaying(false);
+    }
+  }, [currentRadioStationId, customRadioTitles]);
+
   const editTrackTitle = useCallback((track) => {
     if (!track?.filename) return;
-    const currentTitle = getTrackTitle(track);
-    const nextTitle = window.prompt('Edit track title:', currentTitle)?.trim();
-    if (!nextTitle) return;
+    setEditingRadioStation(null);
+    setEditingTrack(track);
+  }, []);
+
+  const saveTrackTitle = useCallback((track, nextTitle) => {
+    if (!track?.filename || !nextTitle) return;
+    const catalogTrack = catalogTracks.find((item) => item.filename === track.filename);
+    const originalTitle = getTrackTitle(catalogTrack || track);
 
     setCustomTitles((currentTitles) => {
       const nextTitles = { ...currentTitles };
-      if (nextTitle === track.displayTitle || nextTitle === track.title) delete nextTitles[track.filename];
+      if (nextTitle === originalTitle) delete nextTitles[track.filename];
       else nextTitles[track.filename] = nextTitle;
       window.localStorage.setItem(CUSTOM_TITLES_STORAGE_KEY, JSON.stringify(nextTitles));
       return nextTitles;
     });
-  }, []);
+    setEditingTrack(null);
+  }, [catalogTracks]);
 
   const deleteTrack = useCallback((track) => {
     if (!track?.filename) return;
@@ -2515,6 +2662,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     <main className={`player-shell${isMinimized ? ' is-minimized' : ''}`} style={shellStyle}>
       {currentTrack && (
         <audio
+          key={currentTrack.source === 'radio-browser' ? 'radio-audio' : 'local-audio'}
           ref={audioRef}
           preload="metadata"
           onError={() => {
@@ -2525,6 +2673,28 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
       )}
       <div className="duration-probes" aria-hidden="true">{durationProbes}</div>
       <StorageConsentModal />
+      {editingTrack && (
+        <DisplayTitleEditor
+          key={editingTrack.filename}
+          editorLabel="TRACK"
+          initialTitle={getTrackTitle(editingTrack)}
+          originalTitle={getTrackTitle(catalogTracks.find((track) => track.filename === editingTrack.filename) || editingTrack)}
+          description="This changes the title shown in the player. The audio filename and embedded metadata stay untouched."
+          onClose={() => setEditingTrack(null)}
+          onSave={(nextTitle) => saveTrackTitle(editingTrack, nextTitle)}
+        />
+      )}
+      {editingRadioStation && (
+        <DisplayTitleEditor
+          key={getStationId(editingRadioStation)}
+          editorLabel="STATION"
+          initialTitle={customRadioTitles[getStationId(editingRadioStation)] || editingRadioStation.name}
+          originalTitle={editingRadioStation.name}
+          description="This changes the station title shown in the radio list on this device. The directory entry and stream stay untouched."
+          onClose={() => setEditingRadioStation(null)}
+          onSave={(nextTitle) => saveRadioStationTitle(editingRadioStation, nextTitle)}
+        />
+      )}
 
       {isMinimized ? (
         <>
@@ -2536,6 +2706,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               visualMode={visualMode}
               eqGains={eqGains}
               eqEnabled={eqEnabled}
+              analyzable={currentTrack.source !== 'radio-browser'}
             />
           )}
           <WinampMiniPlayer
@@ -2595,8 +2766,12 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               onPanelResizePointerUp={onPanelResizePointerUp}
               radioProps={{
                 activeStationId: currentRadioStationId,
+                customStationTitles: customRadioTitles,
                 favoriteStations: favoriteRadioStations,
+                hiddenStationIds: hiddenRadioStations,
                 playing: isPlaying,
+                onEditStation: editRadioStationTitle,
+                onHideStation: hideRadioStation,
                 onPlayStation: playRadioStation,
                 onToggleFavoriteStation: toggleFavoriteRadioStation,
               }}
@@ -2708,8 +2883,12 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
         onResizePointerUp={onLibraryResizePointerUp}
         radioProps={{
           activeStationId: currentRadioStationId,
+          customStationTitles: customRadioTitles,
           favoriteStations: favoriteRadioStations,
+          hiddenStationIds: hiddenRadioStations,
           playing: isPlaying,
+          onEditStation: editRadioStationTitle,
+          onHideStation: hideRadioStation,
           onPlayStation: playRadioStation,
           onToggleFavoriteStation: toggleFavoriteRadioStation,
         }}
