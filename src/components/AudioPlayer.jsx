@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PANEL_SNAP_PX = 34;
 const audioGraphs = new WeakMap();
+const radioEqCorsCache = new Map();
 const EQ_BANDS = [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const DEFAULT_EQ_GAINS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const BUILT_IN_EQ_PRESETS = {
@@ -299,6 +300,27 @@ const ensureAudioGraph = async (audio, gains = DEFAULT_EQ_GAINS, enabled = true)
     return graph;
   } catch {
     return null;
+  }
+};
+
+const probeRadioEqSupport = async (url, signal) => {
+  if (!url) return false;
+  if (radioEqCorsCache.has(url)) return radioEqCorsCache.get(url);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+      signal,
+    });
+    const supported = response.ok && response.type !== 'opaque';
+    radioEqCorsCache.set(url, supported);
+    if (response.body) await response.body.cancel().catch(() => {});
+    return supported;
+  } catch {
+    if (!signal?.aborted) radioEqCorsCache.set(url, false);
+    return false;
   }
 };
 
@@ -673,6 +695,38 @@ function WinampTransportIcon({ type }) {
   return <span className={`winamp-transport-icon icon-${type}`} aria-hidden="true" />;
 }
 
+function RadioEqNotice({ status, compact = false }) {
+  if (!status || status === 'idle') return null;
+
+  const messages = {
+    checking: ['TUNING DSP LINK...', 'Checking station CORS'],
+    ready: ['DSP HANDSHAKE...', 'Routing stream through EQ'],
+    enabled: ['RADIO EQ ONLINE', '10-band DSP + visuals active'],
+    bypassed: ['DIRECT SIGNAL // EQ BYPASS', 'Station blocks CORS — playback stays live'],
+  };
+  const [headline, detail] = messages[status] || messages.bypassed;
+
+  return (
+    <div
+      className="radio-eq-notice"
+      data-status={status}
+      data-compact={compact}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="radio-eq-leds" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="radio-eq-copy">
+        <strong>{headline}</strong>
+        <small>{detail}</small>
+      </span>
+    </div>
+  );
+}
+
 function WinampLcdSpectrum({ audioRef, playing, eqGains, eqEnabled, analyzable = true }) {
   const [levels, setLevels] = useState(() => Array.from({ length: 18 }, () => 14));
 
@@ -751,6 +805,8 @@ function WinampMiniPlayer({
   eqPresets,
   activeEqPreset,
   audioRef,
+  audioAnalyzable,
+  radioEqStatus,
   onSeek,
   onVolumeChange,
   onToggle,
@@ -886,7 +942,7 @@ function WinampMiniPlayer({
               playing={playing}
               eqGains={eqGains}
               eqEnabled={eqEnabled}
-              analyzable={track?.source !== 'radio-browser'}
+              analyzable={audioAnalyzable}
             />
           </div>
 
@@ -981,6 +1037,7 @@ function WinampMiniPlayer({
           </select>
           <button type="button" onClick={onEqPresetSave}>SAVE</button>
         </WinampWindowBar>
+        <RadioEqNotice status={radioEqStatus} compact />
         <div className="winamp-vis-row winamp-eq-vis-row" aria-label="Visualizer mode">
           <span>VISUALS</span>
           {['candy', 'bars', 'wave', 'idle'].map((mode) => (
@@ -1811,6 +1868,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     readLocalStorageJson(HIDDEN_RADIO_STATIONS_STORAGE_KEY, [])
   ));
   const [radioTrack, setRadioTrack] = useState(null);
+  const [radioEqState, setRadioEqState] = useState({ stationId: '', status: 'idle' });
   const [editingTrack, setEditingTrack] = useState(null);
   const [editingRadioStation, setEditingRadioStation] = useState(null);
   const [eqPresets, setEqPresets] = useState(() => {
@@ -1845,6 +1903,14 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
   const currentNowPlaying = useMemo(() => getNowPlayingInfo(currentTrack), [currentTrack]);
   const currentNowPlayingSubtitle = useMemo(() => getNowPlayingSubtitle(currentNowPlaying), [currentNowPlaying]);
   const currentRadioStationId = currentTrack?.source === 'radio-browser' ? currentTrack.radioStation?.stationuuid : '';
+  const isRadioTrack = currentTrack?.source === 'radio-browser';
+  const radioEqStatus = isRadioTrack && radioEqState.stationId === currentRadioStationId
+    ? radioEqState.status
+    : isRadioTrack ? 'checking' : 'idle';
+  const radioAudioMode = !isRadioTrack
+    ? 'local'
+    : ['ready', 'enabled'].includes(radioEqStatus) ? 'cors' : radioEqStatus === 'bypassed' ? 'direct' : 'checking';
+  const audioAnalyzable = !isRadioTrack || radioAudioMode === 'cors';
   const hasDetachedPanels = Boolean(panelOffsets.eq || panelOffsets.playlist);
   const renderedPanelOffsets = isMobile ? EMPTY_PANEL_OFFSETS : panelOffsets;
   const renderedPanelSizes = isMobile ? {} : panelSizes;
@@ -1958,6 +2024,41 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isRadioTrack || !currentTrack?.src || !currentRadioStationId) {
+      setRadioEqState({ stationId: '', status: 'idle' });
+      return undefined;
+    }
+
+    const cachedSupport = radioEqCorsCache.get(currentTrack.src);
+    if (typeof cachedSupport === 'boolean') {
+      setRadioEqState({
+        stationId: currentRadioStationId,
+        status: cachedSupport ? 'ready' : 'bypassed',
+      });
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+    let cancelled = false;
+    setRadioEqState({ stationId: currentRadioStationId, status: 'checking' });
+
+    probeRadioEqSupport(currentTrack.src, controller.signal).then((supported) => {
+      if (cancelled) return;
+      setRadioEqState({
+        stationId: currentRadioStationId,
+        status: supported ? 'ready' : 'bypassed',
+      });
+    }).finally(() => window.clearTimeout(timeoutId));
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [currentRadioStationId, currentTrack?.src, isRadioTrack]);
+
   const getNextShuffledIndex = useCallback((currentIndex = trackIndex) => {
     if (tracks.length <= 1) return currentIndex;
     shuffleQueue.current = shuffleQueue.current.filter((index) => index < tracks.length && index !== currentIndex);
@@ -2018,9 +2119,16 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
 
+    if (isRadioTrack && radioAudioMode === 'checking') {
+      setProgress(0);
+      setCurrentTime(0);
+      setDuration(0);
+      setAudioError('');
+      return;
+    }
+
     audio.src = currentTrack.src;
     const savedPosition = readLocalStorageJson(PLAYBACK_POSITION_STORAGE_KEY, null);
-    const isRadioTrack = currentTrack.source === 'radio-browser';
     const savedTime = !isRadioTrack && savedPosition?.filename === currentTrack.filename ? Math.max(0, Number(savedPosition.time) || 0) : 0;
     const applySavedPosition = () => {
       if (!savedTime || !Number.isFinite(audio.duration)) return;
@@ -2036,13 +2144,32 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     audio.addEventListener('loadedmetadata', applySavedPosition, { once: true });
 
     if (isPlaying) {
-      const playback = isRadioTrack
-        ? audio.play()
-        : ensureAudioGraph(audio, eqGains, eqEnabled).then(() => audio.play());
-      playback.catch(() => setIsPlaying(false));
+      const startPlayback = async () => {
+        if (audioAnalyzable) {
+          const graph = await ensureAudioGraph(audio, eqGains, eqEnabled);
+          if (isRadioTrack && !graph) {
+            radioEqCorsCache.set(currentTrack.src, false);
+            setRadioEqState({ stationId: currentRadioStationId, status: 'bypassed' });
+            return;
+          }
+        }
+        if (isRadioTrack && radioAudioMode === 'cors') {
+          setRadioEqState({ stationId: currentRadioStationId, status: 'enabled' });
+        }
+        await audio.play();
+      };
+      startPlayback().catch(() => {
+        if (isRadioTrack && radioAudioMode === 'cors') {
+          radioEqCorsCache.set(currentTrack.src, false);
+          setRadioEqState({ stationId: currentRadioStationId, status: 'bypassed' });
+          setIsPlaying(true);
+          return;
+        }
+        setIsPlaying(false);
+      });
     }
     return () => audio.removeEventListener('loadedmetadata', applySavedPosition);
-  }, [currentTrack]);
+  }, [currentTrack, radioAudioMode]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
@@ -2069,20 +2196,40 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
 
   const play = useCallback(async () => {
     if (!audioRef.current || !currentTrack) return;
+    if (isRadioTrack && radioAudioMode === 'checking') {
+      setIsPlaying(true);
+      return;
+    }
     try {
-      if (currentTrack.source !== 'radio-browser') {
-        await ensureAudioGraph(audioRef.current, eqGains, eqEnabled);
+      if (audioAnalyzable) {
+        const graph = await ensureAudioGraph(audioRef.current, eqGains, eqEnabled);
+        if (isRadioTrack && !graph) {
+          radioEqCorsCache.set(currentTrack.src, false);
+          setRadioEqState({ stationId: currentRadioStationId, status: 'bypassed' });
+          setIsPlaying(true);
+          return;
+        }
       }
       await audioRef.current.play();
+      if (isRadioTrack && radioAudioMode === 'cors') {
+        setRadioEqState({ stationId: currentRadioStationId, status: 'enabled' });
+      }
       setIsPlaying(true);
       setAudioError('');
     } catch {
+      if (isRadioTrack && radioAudioMode === 'cors') {
+        radioEqCorsCache.set(currentTrack.src, false);
+        setRadioEqState({ stationId: currentRadioStationId, status: 'bypassed' });
+        setIsPlaying(true);
+        setAudioError('');
+        return;
+      }
       setIsPlaying(false);
       setAudioError(currentTrack.source === 'radio-browser'
         ? 'This radio stream could not start. Some stations block browser playback or use unsupported stream formats.'
         : 'This track could not start. If it is from Google Flow, use a direct audio file URL or download/export it locally.');
     }
-  }, [currentTrack, eqEnabled, eqGains]);
+  }, [audioAnalyzable, currentRadioStationId, currentTrack, eqEnabled, eqGains, isRadioTrack, radioAudioMode]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -2662,12 +2809,22 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
     <main className={`player-shell${isMinimized ? ' is-minimized' : ''}`} style={shellStyle}>
       {currentTrack && (
         <audio
-          key={currentTrack.source === 'radio-browser' ? 'radio-audio' : 'local-audio'}
+          key={isRadioTrack ? `radio-audio:${currentRadioStationId}:${radioAudioMode}` : 'local-audio'}
           ref={audioRef}
           preload="metadata"
+          crossOrigin={isRadioTrack && radioAudioMode === 'cors' ? 'anonymous' : undefined}
           onError={() => {
+            if (isRadioTrack && radioAudioMode === 'cors') {
+              radioEqCorsCache.set(currentTrack.src, false);
+              setRadioEqState({ stationId: currentRadioStationId, status: 'bypassed' });
+              setIsPlaying(true);
+              setAudioError('');
+              return;
+            }
             setIsPlaying(false);
-            setAudioError('The audio source failed to load. Google Flow share links usually open a page; the player needs a direct streamable audio URL.');
+            setAudioError(isRadioTrack
+              ? 'This radio stream could not start. Some stations block browser playback or use unsupported stream formats.'
+              : 'The audio source failed to load. Google Flow share links usually open a page; the player needs a direct streamable audio URL.');
           }}
         />
       )}
@@ -2706,7 +2863,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               visualMode={visualMode}
               eqGains={eqGains}
               eqEnabled={eqEnabled}
-              analyzable={currentTrack.source !== 'radio-browser'}
+              analyzable={audioAnalyzable}
             />
           )}
           <WinampMiniPlayer
@@ -2734,6 +2891,8 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
               eqPresets={eqPresets}
               activeEqPreset={activeEqPreset}
               audioRef={audioRef}
+              audioAnalyzable={audioAnalyzable}
+              radioEqStatus={radioEqStatus}
               onSeek={seek}
               onVolumeChange={setVolume}
               onToggle={togglePlay}
@@ -2816,6 +2975,7 @@ export default function AudioPlayer({ tracks: catalogTracks = [] }) {
             </div>
 
             <TrackMeta track={currentTrack} liveDuration={duration} />
+            <RadioEqNotice status={radioEqStatus} />
             {currentTrack?.flowUrl && (
               <a className="flow-link" href={currentTrack.flowUrl} target="_blank" rel="noreferrer">
                 Open in Google Flow

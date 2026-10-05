@@ -1324,6 +1324,153 @@ h1 {
   line-height: 1.45;
 }
 
+.radio-eq-notice {
+  --eq-link-color: #d6ff36;
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  overflow: hidden;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--eq-link-color) 48%, transparent);
+  border-radius: 3px;
+  color: var(--eq-link-color);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    #020903;
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--eq-link-color) 10%, transparent),
+    0 0 12px color-mix(in srgb, var(--eq-link-color) 8%, transparent);
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+
+.radio-eq-notice::after {
+  position: absolute;
+  inset: 0 auto 0 -22%;
+  width: 18%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--eq-link-color) 15%, transparent), transparent);
+  transform: translateX(0);
+  animation: radio-eq-scan 2.8s linear infinite;
+}
+
+.radio-eq-notice[data-status="enabled"] {
+  --eq-link-color: #00ff41;
+}
+
+.radio-eq-notice[data-status="bypassed"] {
+  --eq-link-color: #ffb31a;
+}
+
+.radio-eq-leds {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.radio-eq-leds i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--eq-link-color) 72%, #000);
+  background: color-mix(in srgb, var(--eq-link-color) 22%, #020403);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.radio-eq-notice[data-status="checking"] .radio-eq-leds i,
+.radio-eq-notice[data-status="ready"] .radio-eq-leds i,
+.radio-eq-notice[data-status="enabled"] .radio-eq-leds i {
+  background: var(--eq-link-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--eq-link-color) 68%, transparent);
+  animation: radio-eq-led-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.radio-eq-leds i:nth-child(2) {
+  animation-delay: 120ms !important;
+}
+
+.radio-eq-leds i:nth-child(3) {
+  animation-delay: 240ms !important;
+}
+
+.radio-eq-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.radio-eq-copy strong {
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1;
+  letter-spacing: 0.075em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 7px color-mix(in srgb, var(--eq-link-color) 48%, transparent);
+}
+
+.radio-eq-copy small {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--eq-link-color) 68%, #839087);
+  font-size: 0.56rem;
+  line-height: 1;
+  letter-spacing: 0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radio-eq-notice[data-compact="true"] {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 23px;
+  padding: 3px 7px;
+  border-width: 1px 0;
+  border-radius: 0;
+}
+
+.radio-eq-notice[data-compact="true"] .radio-eq-leds {
+  gap: 3px;
+}
+
+.radio-eq-notice[data-compact="true"] .radio-eq-leds i {
+  width: 5px;
+  height: 5px;
+}
+
+.radio-eq-notice[data-compact="true"] .radio-eq-copy {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+
+.radio-eq-notice[data-compact="true"] .radio-eq-copy strong {
+  flex: 0 1 auto;
+  font-size: 0.52rem;
+}
+
+.radio-eq-notice[data-compact="true"] .radio-eq-copy small {
+  flex: 1 1 auto;
+  font-size: 0.43rem;
+}
+
+@keyframes radio-eq-scan {
+  to {
+    transform: translateX(680%);
+  }
+}
+
+@keyframes radio-eq-led-pulse {
+  from {
+    opacity: 0.36;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .equalizer {
   display: flex;
   align-items: end;
@@ -3007,6 +3154,114 @@ h1 {
   min-height: 0;
 }
 
+/* The EQ is a focused utility window, so it gets the same generous chrome as the title editor. */
+.winamp-eq-panel {
+  min-height: 286px;
+  border-color: #020309;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(88, 215, 255, 0.34),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0 #05060b;
+}
+
+.winamp-eq-panel[data-detached="true"] {
+  min-width: min(560px, calc(100vw - 24px));
+  min-height: 330px;
+}
+
+.winamp-eq-panel .winamp-window-bar {
+  min-height: 31px;
+  padding: 5px 7px 5px 30px;
+  color: #061007;
+  background: linear-gradient(90deg, #d6ff36, #58d7ff 64%, #f2fff4);
+  text-shadow: none;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+.winamp-eq-panel .winamp-window-tools button,
+.winamp-eq-panel .winamp-window-bar > button {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 5px;
+  font-size: 0.56rem;
+}
+
+.winamp-eq-panel .winamp-preset-select {
+  width: 152px;
+  max-width: 152px;
+  min-height: 23px;
+  padding: 0 18px 0 7px;
+  font-size: 0.56rem;
+}
+
+.winamp-eq-body {
+  gap: 12px;
+  min-height: 218px;
+  padding: 20px 24px 15px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, rgba(2, 4, 12, 0.74), rgba(0, 3, 2, 0.96));
+}
+
+.winamp-eq-panel:has(.winamp-eq-body[data-open="false"]) {
+  min-height: 0;
+}
+
+.winamp-preamp,
+.winamp-eq-band {
+  gap: 8px;
+}
+
+.winamp-preamp i,
+.winamp-eq-band input {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-preamp i::after {
+  top: 72px;
+  width: 20px;
+  height: 11px;
+}
+
+.winamp-eq-band input::-webkit-slider-runnable-track {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-eq-band input::-webkit-slider-thumb {
+  width: 20px;
+  height: 12px;
+  margin-left: -7px;
+}
+
+.winamp-eq-band input::-moz-range-track {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-eq-band input::-moz-range-thumb {
+  width: 20px;
+  height: 12px;
+}
+
+.winamp-preamp span,
+.winamp-eq-band span {
+  font-size: 0.52rem;
+}
+
+.winamp-eq-panel .winamp-vis-row {
+  gap: 5px;
+  padding: 7px 10px;
+}
+
+.winamp-eq-panel .winamp-vis-row button {
+  min-height: 24px;
+  font-size: 0.56rem;
+}
+
 .winamp-preamp,
 .winamp-eq-band {
   display: grid;
@@ -3089,6 +3344,49 @@ h1 {
 .winamp-eq-band span {
   color: #d9dfef;
   font: 900 0.43rem/1 var(--mono);
+}
+
+.winamp-eq-panel .winamp-preamp,
+.winamp-eq-panel .winamp-eq-band {
+  gap: 8px;
+}
+
+.winamp-eq-panel .winamp-preamp i,
+.winamp-eq-panel .winamp-eq-band input {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-eq-panel .winamp-preamp i::after {
+  top: 72px;
+  width: 20px;
+  height: 11px;
+}
+
+.winamp-eq-panel .winamp-eq-band input::-webkit-slider-runnable-track {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-eq-panel .winamp-eq-band input::-webkit-slider-thumb {
+  width: 20px;
+  height: 12px;
+  margin-left: -7px;
+}
+
+.winamp-eq-panel .winamp-eq-band input::-moz-range-track {
+  width: 8px;
+  height: 148px;
+}
+
+.winamp-eq-panel .winamp-eq-band input::-moz-range-thumb {
+  width: 20px;
+  height: 12px;
+}
+
+.winamp-eq-panel .winamp-preamp span,
+.winamp-eq-panel .winamp-eq-band span {
+  font-size: 0.52rem;
 }
 
 .winamp-playlist-panel {
@@ -3228,6 +3526,18 @@ h1 {
 .winamp-radio-wrap .radio-station-actions button:hover {
   color: #07100a;
   filter: brightness(1.08);
+}
+
+.winamp-radio-wrap .radio-station-row:hover:not([data-active="true"]) .radio-station-actions button {
+  border-color: rgba(240, 255, 216, 0.34);
+  color: #f0ffd8;
+  background: rgba(0, 255, 54, 0.08);
+}
+
+.winamp-radio-wrap .radio-station-row:hover:not([data-active="true"]) .radio-station-actions button[data-active="true"] {
+  border-color: rgba(216, 199, 122, 0.8);
+  color: #05070c;
+  background: #d8c77a;
 }
 
 .winamp-radio-wrap .radio-genre-chips {
@@ -3669,7 +3979,81 @@ h1 {
     min-height: 104px;
   }
 
+  .winamp-eq-panel[data-detached="true"] {
+    min-width: 0;
+  }
+
+  .winamp-eq-panel .winamp-window-bar {
+    min-height: 22px;
+    padding: 3px 6px 3px 24px;
+    font-size: 0.56rem;
+  }
+
+  .winamp-eq-panel .winamp-window-tools button,
+  .winamp-eq-panel .winamp-window-bar > button {
+    min-width: 16px;
+    min-height: 16px;
+    padding: 0 3px;
+  }
+
+  .winamp-eq-panel .winamp-preset-select {
+    width: 100px;
+    max-width: 100px;
+    min-height: 17px;
+    padding-inline: 3px;
+    font-size: 0.44rem;
+  }
+
   .winamp-eq-body {
+    min-height: 0;
+    gap: 5px;
+    padding: 8px 10px 6px;
+  }
+
+  .winamp-eq-panel .winamp-preamp,
+  .winamp-eq-panel .winamp-eq-band {
+    gap: 4px;
+  }
+
+  .winamp-eq-panel .winamp-preamp i,
+  .winamp-eq-panel .winamp-eq-band input {
+    width: 5px;
+    height: 52px;
+  }
+
+  .winamp-eq-panel .winamp-preamp i::after {
+    top: 25px;
+    width: 13px;
+    height: 8px;
+  }
+
+  .winamp-eq-panel .winamp-eq-band input::-webkit-slider-runnable-track {
+    width: 5px;
+    height: 52px;
+  }
+
+  .winamp-eq-panel .winamp-eq-band input::-webkit-slider-thumb {
+    width: 14px;
+    height: 9px;
+    margin-left: -5px;
+  }
+
+  .winamp-eq-panel .winamp-eq-band input::-moz-range-track {
+    width: 5px;
+    height: 52px;
+  }
+
+  .winamp-eq-panel .winamp-eq-band input::-moz-range-thumb {
+    width: 14px;
+    height: 9px;
+  }
+
+  .winamp-eq-panel .winamp-preamp span,
+  .winamp-eq-panel .winamp-eq-band span {
+    font-size: 0.43rem;
+  }
+
+  .winamp-eq-panel .winamp-eq-body {
     padding-inline: 10px;
   }
 
