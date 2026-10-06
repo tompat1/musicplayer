@@ -3277,7 +3277,7 @@ h1 {
   height: 52px;
   border: 1px solid #080a10;
   background:
-    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px 25px, #e1c65b 25px 27px, transparent 27px),
+    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px calc(50% - 1px), #e1c65b calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px) calc(100% - 2px), #e1c65b calc(100% - 2px) 100%),
     #24283b;
   box-shadow: inset 1px 0 0 #5e6682;
 }
@@ -3308,7 +3308,7 @@ h1 {
   height: 52px;
   border: 1px solid #080a10;
   background:
-    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px 25px, #e1c65b 25px 27px, transparent 27px),
+    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px calc(50% - 1px), #e1c65b calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px) calc(100% - 2px), #e1c65b calc(100% - 2px) 100%),
     #24283b;
   box-shadow: inset 1px 0 0 #5e6682;
 }
@@ -3329,7 +3329,10 @@ h1 {
   width: 5px;
   height: 52px;
   border: 1px solid #080a10;
-  background: #24283b;
+  background:
+    linear-gradient(to bottom, #e1c65b 0 2px, transparent 2px calc(50% - 1px), #e1c65b calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px) calc(100% - 2px), #e1c65b calc(100% - 2px) 100%),
+    #24283b;
+  box-shadow: inset 1px 0 0 #5e6682;
 }
 
 .winamp-eq-band input::-moz-range-thumb {
